@@ -1,0 +1,534 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		03A04A1E03CECAE1C8713578 /* WatchLogInbox.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E1042AAC9182ECFD3F5FC11 /* WatchLogInbox.swift */; };
+		1793EFF2CF55D6BF98D1B922 /* LogStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = D391F124F26978C6EA9CE92E /* LogStore.swift */; };
+		3955D5CF2320D18CA0C38B62 /* HIDDescriptors.swift in Sources */ = {isa = PBXBuildFile; fileRef = F57B97A047F9857D9E240285 /* HIDDescriptors.swift */; };
+		3DFA40E4337FD0076A1927C6 /* ChecklistView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D902E4B19FE4FDDEEAC50856 /* ChecklistView.swift */; };
+		4B08FA18222C37AA58EBF0DA /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 05B5D0BB50EDC1EE8902F855 /* Assets.xcassets */; };
+		7110D9E8D8AD5FC3DC6D412D /* WatchHIDWatchApp.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = F13A56123FA0BE1B32063217 /* WatchHIDWatchApp.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		84B97F4F6F55B1FAE7C43F70 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 9E65FE9002DE5DD83C68D2C3 /* Assets.xcassets */; };
+		8B3737AA07380EBE4D1A41F4 /* WatchHIDApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3252ADA39FC701DE6675A667 /* WatchHIDApp.swift */; };
+		8D1F7C49B3D65EAC282FC85C /* LogEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDBD31517FD5FE527FAB7FB6 /* LogEntry.swift */; };
+		9DD3AC587E4E530C32127FC3 /* PeripheralProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C6C61FC4163BFA17B9A8418 /* PeripheralProbe.swift */; };
+		A25590A8B58294F64719391B /* BLEScanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5A0067C1EC1DF9909F9B731 /* BLEScanner.swift */; };
+		ACB011887E8053A42457B5C6 /* WatchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13B069EDE22D71C7F8BFD107 /* WatchApp.swift */; };
+		B310CE42CF005BB93C690C8D /* RuntimeEnumerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 355CD0CB069653CDE1059908 /* RuntimeEnumerator.swift */; };
+		E8BDAEE5F762C438837BA3A9 /* HIDDescriptors.swift in Sources */ = {isa = PBXBuildFile; fileRef = F57B97A047F9857D9E240285 /* HIDDescriptors.swift */; };
+		EAFAFCA4E0106C400FA8C904 /* ScannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 763F53C18474CBF220471587 /* ScannerView.swift */; };
+		EFD93EDDE452DD05AB357901 /* LogEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDBD31517FD5FE527FAB7FB6 /* LogEntry.swift */; };
+		F7FAE9C69183DBD46C54AB04 /* PeripheralManagerFactory.m in Sources */ = {isa = PBXBuildFile; fileRef = 4C1DCF1556640520CD7CD175 /* PeripheralManagerFactory.m */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		4C52A96F9D9E1346E2D0F299 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = A895A39BBAA09510BCC0ECF0 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = A8E2BC837637E1B9D584DA0D;
+			remoteInfo = WatchHIDWatchApp;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		4DB194FF3CCF0BF6E60C8AD0 /* Embed Watch Content */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "$(CONTENTS_FOLDER_PATH)/Watch";
+			dstSubfolderSpec = 16;
+			files = (
+				7110D9E8D8AD5FC3DC6D412D /* WatchHIDWatchApp.app in Embed Watch Content */,
+			);
+			name = "Embed Watch Content";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		05B5D0BB50EDC1EE8902F855 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		0F35DD9D8B1B5F2559F51BCC /* WatchHID.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = WatchHID.entitlements; sourceTree = "<group>"; };
+		13B069EDE22D71C7F8BFD107 /* WatchApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchApp.swift; sourceTree = "<group>"; };
+		178D3FFCBF79E07DB3496528 /* WatchHIDWatch-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "WatchHIDWatch-Bridging-Header.h"; sourceTree = "<group>"; };
+		2C6C61FC4163BFA17B9A8418 /* PeripheralProbe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PeripheralProbe.swift; sourceTree = "<group>"; };
+		3252ADA39FC701DE6675A667 /* WatchHIDApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchHIDApp.swift; sourceTree = "<group>"; };
+		355CD0CB069653CDE1059908 /* RuntimeEnumerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RuntimeEnumerator.swift; sourceTree = "<group>"; };
+		4C1DCF1556640520CD7CD175 /* PeripheralManagerFactory.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PeripheralManagerFactory.m; sourceTree = "<group>"; };
+		6CB498AC8774EB486925F419 /* WatchHIDWatch.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = WatchHIDWatch.entitlements; sourceTree = "<group>"; };
+		6D6A9DAF0EEE8BBA8DD0E64A /* WatchHID.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = WatchHID.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		6E1042AAC9182ECFD3F5FC11 /* WatchLogInbox.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchLogInbox.swift; sourceTree = "<group>"; };
+		763F53C18474CBF220471587 /* ScannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScannerView.swift; sourceTree = "<group>"; };
+		8B00F6965BE0AD88A4CB6D20 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		9E65FE9002DE5DD83C68D2C3 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		9E9BEC3135FA4D3603247DE4 /* PeripheralManagerFactory.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PeripheralManagerFactory.h; sourceTree = "<group>"; };
+		AB1DC3443ED5190421DD8574 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		D391F124F26978C6EA9CE92E /* LogStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogStore.swift; sourceTree = "<group>"; };
+		D902E4B19FE4FDDEEAC50856 /* ChecklistView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChecklistView.swift; sourceTree = "<group>"; };
+		DDBD31517FD5FE527FAB7FB6 /* LogEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogEntry.swift; sourceTree = "<group>"; };
+		F13A56123FA0BE1B32063217 /* WatchHIDWatchApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = WatchHIDWatchApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		F57B97A047F9857D9E240285 /* HIDDescriptors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HIDDescriptors.swift; sourceTree = "<group>"; };
+		F5A0067C1EC1DF9909F9B731 /* BLEScanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BLEScanner.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		3A233EF7B04DA4C1FF37364B = {
+			isa = PBXGroup;
+			children = (
+				D18844D910FE3F5A4ACA892F /* Apps */,
+				D7CDABBC32271271B030676A /* Shared */,
+				9CE2E0505E6E7FC137DA79BA /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		6091F90A91F155DE0D4A94E6 /* iOS */ = {
+			isa = PBXGroup;
+			children = (
+				05B5D0BB50EDC1EE8902F855 /* Assets.xcassets */,
+				F5A0067C1EC1DF9909F9B731 /* BLEScanner.swift */,
+				D902E4B19FE4FDDEEAC50856 /* ChecklistView.swift */,
+				AB1DC3443ED5190421DD8574 /* Info.plist */,
+				763F53C18474CBF220471587 /* ScannerView.swift */,
+				0F35DD9D8B1B5F2559F51BCC /* WatchHID.entitlements */,
+				3252ADA39FC701DE6675A667 /* WatchHIDApp.swift */,
+				6E1042AAC9182ECFD3F5FC11 /* WatchLogInbox.swift */,
+			);
+			path = iOS;
+			sourceTree = "<group>";
+		};
+		9862D4DC793DD248B5149979 /* Watch */ = {
+			isa = PBXGroup;
+			children = (
+				9E65FE9002DE5DD83C68D2C3 /* Assets.xcassets */,
+				8B00F6965BE0AD88A4CB6D20 /* Info.plist */,
+				D391F124F26978C6EA9CE92E /* LogStore.swift */,
+				9E9BEC3135FA4D3603247DE4 /* PeripheralManagerFactory.h */,
+				4C1DCF1556640520CD7CD175 /* PeripheralManagerFactory.m */,
+				2C6C61FC4163BFA17B9A8418 /* PeripheralProbe.swift */,
+				355CD0CB069653CDE1059908 /* RuntimeEnumerator.swift */,
+				13B069EDE22D71C7F8BFD107 /* WatchApp.swift */,
+				178D3FFCBF79E07DB3496528 /* WatchHIDWatch-Bridging-Header.h */,
+				6CB498AC8774EB486925F419 /* WatchHIDWatch.entitlements */,
+			);
+			path = Watch;
+			sourceTree = "<group>";
+		};
+		9CE2E0505E6E7FC137DA79BA /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				6D6A9DAF0EEE8BBA8DD0E64A /* WatchHID.app */,
+				F13A56123FA0BE1B32063217 /* WatchHIDWatchApp.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		D18844D910FE3F5A4ACA892F /* Apps */ = {
+			isa = PBXGroup;
+			children = (
+				6091F90A91F155DE0D4A94E6 /* iOS */,
+				9862D4DC793DD248B5149979 /* Watch */,
+			);
+			path = Apps;
+			sourceTree = "<group>";
+		};
+		D7CDABBC32271271B030676A /* Shared */ = {
+			isa = PBXGroup;
+			children = (
+				F57B97A047F9857D9E240285 /* HIDDescriptors.swift */,
+				DDBD31517FD5FE527FAB7FB6 /* LogEntry.swift */,
+			);
+			path = Shared;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		5BBF9351F2683F19C8B964D1 /* WatchHID */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = B9846A28114D731A17F915C6 /* Build configuration list for PBXNativeTarget "WatchHID" */;
+			buildPhases = (
+				84929424B9D4C55EB178891C /* Sources */,
+				1279EBB66413FE7653ED8225 /* Resources */,
+				4DB194FF3CCF0BF6E60C8AD0 /* Embed Watch Content */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				734F71F830427566A55E895E /* PBXTargetDependency */,
+			);
+			name = WatchHID;
+			packageProductDependencies = (
+			);
+			productName = WatchHID;
+			productReference = 6D6A9DAF0EEE8BBA8DD0E64A /* WatchHID.app */;
+			productType = "com.apple.product-type.application";
+		};
+		A8E2BC837637E1B9D584DA0D /* WatchHIDWatchApp */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 622D6579A98C67344222BE28 /* Build configuration list for PBXNativeTarget "WatchHIDWatchApp" */;
+			buildPhases = (
+				BC5F5B7F8F9B17B02F571766 /* Sources */,
+				5E18C1D3DB8F1E7507419877 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = WatchHIDWatchApp;
+			packageProductDependencies = (
+			);
+			productName = WatchHIDWatchApp;
+			productReference = F13A56123FA0BE1B32063217 /* WatchHIDWatchApp.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		A895A39BBAA09510BCC0ECF0 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1600;
+				TargetAttributes = {
+					5BBF9351F2683F19C8B964D1 = {
+						DevelopmentTeam = 47R73Z2HQT;
+						ProvisioningStyle = Automatic;
+					};
+					A8E2BC837637E1B9D584DA0D = {
+						DevelopmentTeam = 47R73Z2HQT;
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = 9C26F5F64A403F3858FAC21B /* Build configuration list for PBXProject "WatchHID" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 3A233EF7B04DA4C1FF37364B;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 9CE2E0505E6E7FC137DA79BA /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				5BBF9351F2683F19C8B964D1 /* WatchHID */,
+				A8E2BC837637E1B9D584DA0D /* WatchHIDWatchApp */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		1279EBB66413FE7653ED8225 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				4B08FA18222C37AA58EBF0DA /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		5E18C1D3DB8F1E7507419877 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				84B97F4F6F55B1FAE7C43F70 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		84929424B9D4C55EB178891C /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A25590A8B58294F64719391B /* BLEScanner.swift in Sources */,
+				3DFA40E4337FD0076A1927C6 /* ChecklistView.swift in Sources */,
+				3955D5CF2320D18CA0C38B62 /* HIDDescriptors.swift in Sources */,
+				8D1F7C49B3D65EAC282FC85C /* LogEntry.swift in Sources */,
+				EAFAFCA4E0106C400FA8C904 /* ScannerView.swift in Sources */,
+				8B3737AA07380EBE4D1A41F4 /* WatchHIDApp.swift in Sources */,
+				03A04A1E03CECAE1C8713578 /* WatchLogInbox.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		BC5F5B7F8F9B17B02F571766 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E8BDAEE5F762C438837BA3A9 /* HIDDescriptors.swift in Sources */,
+				EFD93EDDE452DD05AB357901 /* LogEntry.swift in Sources */,
+				1793EFF2CF55D6BF98D1B922 /* LogStore.swift in Sources */,
+				F7FAE9C69183DBD46C54AB04 /* PeripheralManagerFactory.m in Sources */,
+				9DD3AC587E4E530C32127FC3 /* PeripheralProbe.swift in Sources */,
+				B310CE42CF005BB93C690C8D /* RuntimeEnumerator.swift in Sources */,
+				ACB011887E8053A42457B5C6 /* WatchApp.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		734F71F830427566A55E895E /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = A8E2BC837637E1B9D584DA0D /* WatchHIDWatchApp */;
+			targetProxy = 4C52A96F9D9E1346E2D0F299 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		5159377A093DC1DE04E07E40 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_ENTITLEMENTS = Apps/Watch/WatchHIDWatch.entitlements;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Apps/Watch/Info.plist;
+				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "WatchHID probes BLE peripheral advertising so the watch can appear as Watch Mouse.";
+				INFOPLIST_KEY_NSBluetoothPeripheralUsageDescription = "WatchHID probes BLE peripheral advertising so the watch can appear as Watch Mouse.";
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.zy.watchhid;
+				PRODUCT_BUNDLE_IDENTIFIER = com.zy.watchhid.watchkitapp;
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SWIFT_OBJC_BRIDGING_HEADER = "Apps/Watch/WatchHIDWatch-Bridging-Header.h";
+				TARGETED_DEVICE_FAMILY = 4;
+				WKRunsIndependentlyOfCompanionApp = NO;
+			};
+			name = Release;
+		};
+		7685C5E3C6EE6CD024804DA3 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = 47R73Z2HQT;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 0.1.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+			};
+			name = Debug;
+		};
+		777631FF8289DE5C369E4A43 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = 47R73Z2HQT;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 0.1.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+			};
+			name = Release;
+		};
+		7F6336A279DF2F37821E7E8C /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Apps/iOS/WatchHID.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Apps/iOS/Info.plist;
+				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "WatchHID scans for the Watch Mouse BLE advertisement during R1 tests.";
+				INFOPLIST_KEY_NSBluetoothPeripheralUsageDescription = "WatchHID uses Bluetooth to verify Watch Mouse advertising.";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.zy.watchhid;
+				SDKROOT = iphoneos;
+				SUPPORTS_MACCATALYST = NO;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		E15245795AA45C9B00FB6682 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_ENTITLEMENTS = Apps/Watch/WatchHIDWatch.entitlements;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Apps/Watch/Info.plist;
+				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "WatchHID probes BLE peripheral advertising so the watch can appear as Watch Mouse.";
+				INFOPLIST_KEY_NSBluetoothPeripheralUsageDescription = "WatchHID probes BLE peripheral advertising so the watch can appear as Watch Mouse.";
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.zy.watchhid;
+				PRODUCT_BUNDLE_IDENTIFIER = com.zy.watchhid.watchkitapp;
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SWIFT_OBJC_BRIDGING_HEADER = "Apps/Watch/WatchHIDWatch-Bridging-Header.h";
+				TARGETED_DEVICE_FAMILY = 4;
+				WKRunsIndependentlyOfCompanionApp = NO;
+			};
+			name = Debug;
+		};
+		F2AAD42FE06A450174B5F562 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Apps/iOS/WatchHID.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Apps/iOS/Info.plist;
+				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "WatchHID scans for the Watch Mouse BLE advertisement during R1 tests.";
+				INFOPLIST_KEY_NSBluetoothPeripheralUsageDescription = "WatchHID uses Bluetooth to verify Watch Mouse advertising.";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.zy.watchhid;
+				SDKROOT = iphoneos;
+				SUPPORTS_MACCATALYST = NO;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		622D6579A98C67344222BE28 /* Build configuration list for PBXNativeTarget "WatchHIDWatchApp" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				E15245795AA45C9B00FB6682 /* Debug */,
+				5159377A093DC1DE04E07E40 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		9C26F5F64A403F3858FAC21B /* Build configuration list for PBXProject "WatchHID" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				7685C5E3C6EE6CD024804DA3 /* Debug */,
+				777631FF8289DE5C369E4A43 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		B9846A28114D731A17F915C6 /* Build configuration list for PBXNativeTarget "WatchHID" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				F2AAD42FE06A450174B5F562 /* Debug */,
+				7F6336A279DF2F37821E7E8C /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = A895A39BBAA09510BCC0ECF0 /* Project object */;
+}
