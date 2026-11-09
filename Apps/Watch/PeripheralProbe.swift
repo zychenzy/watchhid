@@ -19,11 +19,16 @@ final class PeripheralProbe: NSObject, ObservableObject {
     @Published private(set) var keyboardFeatureEnabled: Bool = UserDefaults.standard.bool(forKey: "wh.keyboardFeature")
     /// Nonisolated mirror for ATT read callbacks (must stay in sync with keyboardFeatureEnabled).
     private nonisolated(unsafe) var keyboardFeatureFlag: Bool = UserDefaults.standard.bool(forKey: "wh.keyboardFeature")
+    private nonisolated(unsafe) var macReadReportMapFlag: Bool = false
     @Published private(set) var inputPausedByUser = false
     @Published private(set) var dictationPreview: String?
     @Published private(set) var lastTypeStatus = ""
     @Published private(set) var keyboardBusy = false
     private var lastMouseNotifyLog = -Double.infinity
+    /// Mac (F7A…) read Report Map (2A4B) since current advertising generation.
+    private var macReadReportMapThisGeneration = false
+    private var hidRepublishScheduled = false
+    private var hidRepublishCount = 0
     private var mouse = MouseInputState()
     private var keyboard = KeyboardInputState()
     private var sceneActive = false
@@ -414,6 +419,9 @@ final class PeripheralProbe: NSObject, ObservableObject {
         activeReport = nil
         activeKeyboardReport = nil
         keyboardSubscribedCentrals.removeAll()
+        macReadReportMapThisGeneration = false
+        macReadReportMapFlag = false
+        hidRepublishScheduled = false
         statusSummary = "Starting…"
         addedServiceCount = 0
         expectedServiceCount = 0
@@ -734,7 +742,7 @@ final class PeripheralProbe: NSObject, ObservableObject {
         let model = WHCreateMutableCharacteristic(
             hogpUUID(short: HIDDescriptors.UUID16.modelNumber, full: HIDDescriptors.UUID128.modelNumber),
             propRead,
-            dynamicValues ? nil : Data("Ultra2-R1".utf8),
+            dynamicValues ? nil : Data("Ultra2-R2".utf8),
             permReadable
         )
         let pnp = WHCreateMutableCharacteristic(
@@ -783,12 +791,16 @@ extension PeripheralProbe: CBPeripheralManagerDelegate {
             value = Data([1])
         } else if uuid == CBUUID(string: HIDDescriptors.UUID16.reportMap) {
             value = Data(keyboardFeatureFlag ? HIDDescriptors.mouseKeyboardReportMap : HIDDescriptors.mouseReportMap)
+            if request.central.identifier == UUID(uuidString: "F7A703F6-C354-8E7E-87CB-DEC064EA3CD9") {
+                macReadReportMapFlag = true
+                Task { @MainActor in self.macReadReportMapThisGeneration = true }
+            }
         } else if uuid == CBUUID(string: HIDDescriptors.UUID16.hidInformation) {
             value = Data(HIDDescriptors.hidInformation)
         } else if uuid == CBUUID(string: HIDDescriptors.UUID16.manufacturerName) {
             value = Data("WatchHID".utf8)
         } else if uuid == CBUUID(string: HIDDescriptors.UUID16.modelNumber) {
-            value = Data("Ultra2-R1".utf8)
+            value = Data("Ultra2-R2".utf8) // bump vs R1 to nudge Mac HOGP re-enumerate without unpair
         } else if uuid == CBUUID(string: HIDDescriptors.UUID16.pnpID) {
             let caseName = ProcessInfo.processInfo.arguments.first(where: { $0.hasPrefix("--r1-case=") })?.components(separatedBy: "=").last
             value = (caseName == "standard128-dynamic-pnpgen")
@@ -876,6 +888,12 @@ extension PeripheralProbe: CBPeripheralManagerDelegate {
                         let neutral = Data([0, 0, 0, 0])
                         let ok = WHUpdateReport(self.dynamicPeripheral!, neutral, characteristic)
                         self.log.info("Post-subscribe neutral mouse report accepted=\(ok) (baseline map, no Report ID)")
+                    }
+                    // Host often re-enables CCCD without re-reading Report Map; IOHID then stays absent.
+                    let mapRead = self.macReadReportMapThisGeneration || self.macReadReportMapFlag
+                    self.log.info("Mac Report CCCD; reportMapReadThisGeneration=\(mapRead) republishCount=\(self.hidRepublishCount)")
+                    if !mapRead && !self.keyboardFeatureEnabled {
+                        self.scheduleHIDRepublishForHostRebind(reason: "CCCD without Report Map read")
                     }
                     self.log.info("Input gate updated; no new input, except completing a pending explicit click release")
                 }

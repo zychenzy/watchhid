@@ -320,6 +320,12 @@ final class WatchBackgroundDelegate: NSObject, WKApplicationDelegate {
     func applicationDidFinishLaunching() {
         LogStore.shared.info("Application delegate launched state=\(WKApplication.shared().applicationState.rawValue)")
         PhoneBridge.shared.activate()
+        // Do not wait for ContentView.task — install/relaunch often leaves the process
+        // backgrounded without a scene, which previously skipped HID advertising entirely.
+        Task { @MainActor in
+            PeripheralProbe.shared.prepareMacTouchpad()
+            LogStore.shared.info("Launch-path prepareMacTouchpad requested")
+        }
     }
 
     func handle(_ backgroundTasks: Set<WKRefreshBackgroundTask>) {
