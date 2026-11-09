@@ -1,8 +1,12 @@
+# macOS / IDE
 .DS_Store
-DerivedData/
-build/
+.idea/
 *.xcuserstate
 xcuserdata/
+
+# Xcode / SwiftPM build products (keep local diagnostics off git)
+DerivedData/
+build/
 *.moved-aside
 *.hmap
 *.ipa
@@ -10,5 +14,32 @@ xcuserdata/
 *.dSYM
 .swiftpm/
 Packages/
-.idea/
+
+# Signing / secrets / local machine binding
+*.mobileprovision
+*.p12
+*.pem
+*.p8
+*.cer
+*.der
+.env
+.env.*
+Config/Developer.xcconfig
+Config/local_devices.env
+scripts/local_devices.env
+scripts/__pycache__/
+**/__pycache__/
+*.pyc
+
+# Logs / captures / crash (diagnostic artifacts stay on disk, not in git)
 *.log
+*.ips
+*.crash
+crashlog-*.ips
+*.sysdiagnose
+*.png
+*.jpg
+*.jpeg
+*.heic
+*.mov
+*.mp4

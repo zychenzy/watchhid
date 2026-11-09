@@ -3,6 +3,9 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
+FOUNDATION_EXPORT NSArray<NSString *> *WHRuntimeClassNames(void);
+FOUNDATION_EXPORT NSArray<NSString *> *WHRuntimeClassDetails(NSArray<NSString *> *names);
+
 FOUNDATION_EXPORT Class _Nullable WHPeripheralManagerClass(void);
 FOUNDATION_EXPORT id _Nullable WHCreatePeripheralManager(id _Nullable delegate, dispatch_queue_t _Nullable queue, NSError * _Nullable * _Nullable outError);
 
@@ -18,10 +21,14 @@ FOUNDATION_EXPORT void WHSetDescriptors(id characteristic, NSArray *descriptors)
 
 FOUNDATION_EXPORT void WHRemoveAllServices(id peripheral);
 FOUNDATION_EXPORT void WHAddService(id peripheral, id service);
+FOUNDATION_EXPORT NSString * _Nullable WHAddServiceChecked(id peripheral, id service);
+FOUNDATION_EXPORT NSString * _Nullable WHStartAdvertisingChecked(id peripheral, NSDictionary *advertisement);
 FOUNDATION_EXPORT void WHStartAdvertising(id peripheral, NSDictionary *advertisement);
 FOUNDATION_EXPORT void WHStopAdvertising(id peripheral);
 FOUNDATION_EXPORT NSInteger WHPeripheralState(id peripheral);
 FOUNDATION_EXPORT BOOL WHIsAdvertising(id peripheral);
+FOUNDATION_EXPORT void WHRespondToRequest(id peripheral, id request, NSInteger result);
+FOUNDATION_EXPORT BOOL WHUpdateReport(id peripheral, NSData *data, id characteristic);
 
 /// Raw advertisement keys (may be missing from watchOS Swift overlays).
 FOUNDATION_EXPORT NSString * const WHAdvertisementLocalNameKey;

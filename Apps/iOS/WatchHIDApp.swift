@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 import WatchConnectivity
 
 @main
@@ -11,7 +12,12 @@ struct WatchHIDApp: App {
             RootView()
                 .environmentObject(scanner)
                 .environmentObject(logInbox)
-                .onAppear { logInbox.activate() }
+                .onAppear {
+                    // App-only: keep screen awake during short HID collects. Does not change system auto-lock.
+                    UIApplication.shared.isIdleTimerDisabled = true
+                    logInbox.activate()
+                }
+                .onDisappear { UIApplication.shared.isIdleTimerDisabled = false }
         }
     }
 }

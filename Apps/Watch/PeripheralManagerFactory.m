@@ -148,3 +148,53 @@ BOOL WHIsAdvertising(id peripheral) {
     }
     return NO;
 }
+
+NSArray<NSString *> *WHRuntimeClassNames(void) {
+    unsigned int count = 0;
+    Class __unsafe_unretained *classes = objc_copyClassList(&count);
+    NSMutableArray<NSString *> *names = [NSMutableArray array];
+    for (unsigned int i = 0; i < count; i++) {
+        const char *name = class_getName(classes[i]);
+        if (name) [names addObject:[NSString stringWithUTF8String:name]];
+    }
+    free(classes);
+    return names;
+}
+
+NSString *WHAddServiceChecked(id peripheral, id service) {
+    @try { WHAddService(peripheral, service); return nil; }
+    @catch (NSException *exception) {
+        return [NSString stringWithFormat:@"%@: %@", exception.name, exception.reason];
+    }
+}
+NSString *WHStartAdvertisingChecked(id peripheral, NSDictionary *advertisement) {
+    @try { WHStartAdvertising(peripheral, advertisement); return nil; }
+    @catch (NSException *exception) {
+        return [NSString stringWithFormat:@"%@: %@", exception.name, exception.reason];
+    }
+}
+
+NSArray<NSString *> *WHRuntimeClassDetails(NSArray<NSString *> *names) {
+    NSMutableArray<NSString *> *out = [NSMutableArray array];
+    for (NSString *name in names) {
+        Class __unsafe_unretained cls = objc_lookUpClass(name.UTF8String);
+        if (!cls) { [out addObject:[name stringByAppendingString:@": absent"]]; continue; }
+        const char *image = class_getImageName(cls);
+        [out addObject:[NSString stringWithFormat:@"CLASS %@ image=%s", name, image ?: "unknown"]];
+        unsigned int count = 0;
+        Method *methods = class_copyMethodList(cls, &count);
+        for (unsigned int i = 0; i < count; i++) {
+            [out addObject:[NSString stringWithFormat:@"METHOD %@ %s types=%s", name,
+                sel_getName(method_getName(methods[i])), method_getTypeEncoding(methods[i])]];
+        }
+        free(methods);
+    }
+    return out;
+}
+
+void WHRespondToRequest(id peripheral, id request, NSInteger result) {
+    ((void (*)(id, SEL, id, NSInteger))objc_msgSend)(peripheral, NSSelectorFromString(@"respondToRequest:withResult:"), request, result);
+}
+BOOL WHUpdateReport(id peripheral, NSData *data, id characteristic) {
+    return ((BOOL (*)(id, SEL, id, id, id))objc_msgSend)(peripheral, NSSelectorFromString(@"updateValue:forCharacteristic:onSubscribedCentrals:"), data, characteristic, nil);
+}

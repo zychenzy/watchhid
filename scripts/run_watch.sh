@@ -11,7 +11,7 @@ xcrun devicectl list devices || true
 echo
 echo "Usage when devices are online:"
 echo "  1) Open WatchHID.xcodeproj in Xcode"
-echo "  2) Select team 47R73Z2HQT (Apple Development: njyzy98@gmail.com) on both targets if needed"
+echo "  2) Select team <DEVELOPMENT_TEAM from Config/Developer.xcconfig> (Apple Development: <your Apple ID>) on both targets if needed"
 echo "  3) Destination: ZY的iPhone + paired Ultra 2"
 echo "  4) Run the WatchHID scheme (embeds watch app)"
 echo
