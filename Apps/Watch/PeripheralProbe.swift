@@ -473,6 +473,26 @@ final class PeripheralProbe: NSObject, ObservableObject {
     }
 
 
+
+    private func scheduleHIDRepublishForHostRebind(reason: String) {
+        guard !hidRepublishScheduled, hidRepublishCount < 1 else {
+            log.info("HID republish skipped scheduled=\(hidRepublishScheduled) count=\(hidRepublishCount) reason=\(reason)")
+            return
+        }
+        hidRepublishScheduled = true
+        hidRepublishCount += 1
+        log.warn("Scheduling HID republish for Mac rebind: \(reason)")
+        Task { @MainActor [weak self] in
+            try? await Task.sleep(for: .milliseconds(400))
+            guard let self else { return }
+            let was = self.isRunning
+            if was { self.stop() }
+            try? await Task.sleep(for: .milliseconds(300))
+            self.prepareMacTouchpad()
+            self.log.info("HID republish completed (model Ultra2-R2); waiting for Mac Report Map read + CCCD")
+        }
+    }
+
     private func isKeyboardReportCharacteristic(_ characteristic: CBCharacteristic) -> Bool {
         guard keyboardFeatureEnabled else { return false }
         if let descriptors = characteristic.descriptors {
