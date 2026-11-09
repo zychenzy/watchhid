@@ -21,17 +21,10 @@ enum RuntimeEnumerator {
 
         let interesting = ["Peripheral", "Advertis", "GATT", "HID", "Bluetooth", "BTLE", "CBStack"]
         var matched: [String] = []
-        var count: UInt32 = 0
-        let classList = objc_copyClassList(&count)
-        if let classList {
-            for i in 0..<Int(count) {
-                let cls: AnyClass = classList[i]
-                let name = NSStringFromClass(cls)
-                if interesting.contains(where: { name.localizedCaseInsensitiveContains($0) }) {
-                    matched.append(name)
-                }
+        for name in WHRuntimeClassNames() {
+            if interesting.contains(where: { name.localizedCaseInsensitiveContains($0) }) {
+                matched.append(name)
             }
-            free(UnsafeMutableRawPointer(classList))
         }
         matched.sort()
         out("Matched classes (\(matched.count)):")
@@ -69,6 +62,12 @@ enum RuntimeEnumerator {
             }
         }
 
+        for name in matched where name.hasPrefix("CBStack") || name.hasPrefix("BTLE") || name.hasPrefix("Bluetooth") {
+            out("FOCUSED class \(name)")
+        }
+        for line in WHRuntimeClassDetails(["CBStack", "BluetoothDevice", "CBStackPeripheral", "CBHIDService", "HIDUserDevice", "BluetoothManager", "BTDevice", "CBMutableService", "CBManager"]) {
+            out(line)
+        }
         out("=== End R2 Enumeration ===")
         return lines.joined(separator: "\n")
     }

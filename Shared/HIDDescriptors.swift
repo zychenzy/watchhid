@@ -32,7 +32,7 @@ enum HIDDescriptors {
         0xC0,       // End Collection
     ]
 
-    /// HID Information: bcdHID=1.11, country=0, flags=normallyConnectable|remoteWake
+    /// HID Information: bcdHID=1.11, country=0, flags=0x02 normally-connectable only (not remoteWake)
     static let hidInformation: [UInt8] = [0x11, 0x01, 0x00, 0x02]
 
     /// Appearance value for a mouse (Bluetooth Assigned Numbers).
@@ -55,5 +55,26 @@ enum HIDDescriptors {
         static let pnpID = "2A50"
         static let reportReference = "2908"
         static let cccd = "2902"
+        static let bootMouseInputReport = "2A33"
+        static let externalReportReference = "2907"
+    }
+
+    /// Full Bluetooth base UUID form for SIG 16-bit assignments (darwin-bt-remote LowEnergy/GATT.swift style).
+    enum UUID128 {
+        static let hidService = "00001812-0000-1000-8000-00805F9B34FB"
+        static let batteryService = "0000180F-0000-1000-8000-00805F9B34FB"
+        static let deviceInfoService = "0000180A-0000-1000-8000-00805F9B34FB"
+        static let protocolMode = "00002A4E-0000-1000-8000-00805F9B34FB"
+        static let reportMap = "00002A4B-0000-1000-8000-00805F9B34FB"
+        static let report = "00002A4D-0000-1000-8000-00805F9B34FB"
+        static let hidInformation = "00002A4A-0000-1000-8000-00805F9B34FB"
+        static let hidControlPoint = "00002A4C-0000-1000-8000-00805F9B34FB"
+        static let batteryLevel = "00002A19-0000-1000-8000-00805F9B34FB"
+        static let manufacturerName = "00002A29-0000-1000-8000-00805F9B34FB"
+        static let modelNumber = "00002A24-0000-1000-8000-00805F9B34FB"
+        static let pnpID = "00002A50-0000-1000-8000-00805F9B34FB"
+        static let reportReference = "00002908-0000-1000-8000-00805F9B34FB"
+        static let bootMouseInputReport = "00002A33-0000-1000-8000-00805F9B34FB"
     }
 }
+

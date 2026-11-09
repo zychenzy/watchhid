@@ -1,0 +1,3 @@
+// Copy to Developer.xcconfig (gitignored) before signed device builds.
+// Free personal team ID is configuration, not a credential.
+DEVELOPMENT_TEAM = YOUR_TEAM_ID
