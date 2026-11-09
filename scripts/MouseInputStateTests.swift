@@ -17,11 +17,14 @@ func runMouseTests() {
     mouse.beginTouch(x: 0, y: 0, at: 0)
     check(mouse.frame(at: 0) == nil, "touch down alone never moves")
     mouse.moveTouch(x: 0.3, y: -0.3)
-    check(mouse.frame(at: 0) == nil, "subpixel without drag threshold")
-    // Exceed drag threshold
-    mouse.moveTouch(x: 10, y: -10)
-    check(mouse.dragging, "drag engaged")
-    check(mouse.frame(at: 0) != nil, "drag emits")
+    check(mouse.frame(at: 0) == nil, "subpixel stays pending")
+    // Baseline: small-but-quantized motion emits WITHOUT requiring drag classification
+    mouse.moveTouch(x: 2, y: -2)
+    check(mouse.frame(at: 0) != nil, "baseline emits before drag threshold")
+    // Exceed drag threshold for classification
+    mouse.moveTouch(x: 12, y: -12)
+    check(mouse.dragged, "drag engaged")
+    check(mouse.frame(at: 0.05) != nil, "drag continues")
     check(mouse.pressClick() == nil, "cannot click during drag")
     let endDrag = mouse.endTouch(at: 1)
     check(endDrag.outcome == .none, "drag end is not click")
@@ -73,7 +76,7 @@ func runKeyboardTests() {
     check(down == Data([2, 0x02, 0, 0x04, 0, 0, 0, 0, 0]), "A down with report id")
     let up = kb.step(at: 0.05)
     check(up == Data([2, 0, 0, 0, 0, 0, 0, 0, 0]), "key up")
-    _ = kb.step(at: 0.1) // !
+    _ = kb.step(at: 0.1)
     _ = kb.step(at: 0.15)
     check(kb.cancel() == nil || true, "cancel ok")
 }

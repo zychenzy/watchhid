@@ -23,6 +23,7 @@ final class PeripheralProbe: NSObject, ObservableObject {
     @Published private(set) var dictationPreview: String?
     @Published private(set) var lastTypeStatus = ""
     @Published private(set) var keyboardBusy = false
+    private var lastMouseNotifyLog = -Double.infinity
     private var mouse = MouseInputState()
     private var keyboard = KeyboardInputState()
     private var sceneActive = false
@@ -45,8 +46,11 @@ final class PeripheralProbe: NSObject, ObservableObject {
     func prepareMacTouchpad() {
         guard !isRunning else { return }
         experimentOverride = "standard128-dynamic"
+        // Mouse regression recovery: keep Report ID / composite OFF unless user explicitly enabled keyboard.
         mouse.usesReportID = keyboardFeatureEnabled
         keyboard.usesReportID = true
+        keyboardFeatureFlag = keyboardFeatureEnabled
+        log.info("prepareMacTouchpad keyboardFeature=\(keyboardFeatureEnabled) usesReportID=\(mouse.usesReportID)")
         start()
     }
 
@@ -84,17 +88,18 @@ final class PeripheralProbe: NSObject, ObservableObject {
     }
 
     private func refreshInputGate() {
-        let ready = macInputReady && sceneActive && !inputPausedByUser && !pendingButtonRelease
-        if let release = mouse.availability(active: ready, macReady: ready) {
+        // Keep sceneActive vs macInputReady split (a3c9eaf). Gate arming with pause/pending only.
+        if let release = mouse.availability(active: sceneActive && !inputPausedByUser, macReady: macInputReady) {
             finishMouseRelease(release)
         }
-        if let release = keyboard.availability(active: ready && keyboardFeatureEnabled, macReady: keyboardReady) {
+        let kbActive = sceneActive && !inputPausedByUser && keyboardFeatureEnabled
+        if let release = keyboard.availability(active: kbActive, macReady: keyboardReady) {
             _ = submitKeyboardReport(release)
         }
-        if ready && !mouse.enabled && !pendingButtonRelease {
+        if sceneActive && !inputPausedByUser && macInputReady && !mouse.enabled && !pendingButtonRelease {
             _ = mouse.arm()
         }
-        if ready && keyboardFeatureEnabled && keyboardReady && !keyboard.enabled {
+        if sceneActive && !inputPausedByUser && keyboardFeatureEnabled && keyboardReady && !keyboard.enabled {
             _ = keyboard.arm()
         }
         if !mouse.enabled {
@@ -217,9 +222,21 @@ final class PeripheralProbe: NSObject, ObservableObject {
 
     private func submitMouseReport(_ data: Data) -> Bool {
         guard let peripheral = dynamicPeripheral, let report = activeReport,
-              subscribedCentrals == Set([macCentral]) else { return false }
-        return WHUpdateReport(peripheral, data, report)
-    }
+              subscribedCentrals == Set([macCentral]) else {
+            log.warn("Mouse notify skipped ready=\(macInputReady) activeReport=\(activeReport != nil) subs=\(subscribedCentrals.count) bytes=\(data.count)")
+            return false
+        }
+                let ok = WHUpdateReport(peripheral, data, report)
+        let interesting = data.count >= 4 && (data[data.count - 4] != 0 || data[data.count - 3] != 0 || data[data.count - 2] != 0)
+        let now = ProcessInfo.processInfo.systemUptime
+        if !ok {
+            log.warn("Mouse notify REJECTED bytes=\(data.count)")
+        } else if interesting && now - lastMouseNotifyLog >= 1.0 {
+            lastMouseNotifyLog = now
+            log.info("Mouse notify accepted bytes=\(data.count) b0=\(data[0])")
+        }
+        return ok
+
 
     private func submitKeyboardReport(_ data: Data) -> Bool {
         guard keyboardFeatureEnabled,
@@ -853,6 +870,13 @@ extension PeripheralProbe: CBPeripheralManagerDelegate {
                     self.reportSubscriberCount = self.subscribedCentrals.count
                     self.activeReport = characteristic
                     self.retryPendingRelease()
+                    // Baseline path: one neutral 4-byte mouse report after sole-Mac Report CCCD.
+                    // Helps macOS HOGP complete IOHID bind without requiring user motion.
+                    if !self.keyboardFeatureEnabled {
+                        let neutral = Data([0, 0, 0, 0])
+                        let ok = WHUpdateReport(self.dynamicPeripheral!, neutral, characteristic)
+                        self.log.info("Post-subscribe neutral mouse report accepted=\(ok) (baseline map, no Report ID)")
+                    }
                     self.log.info("Input gate updated; no new input, except completing a pending explicit click release")
                 }
                 self.refreshInputGate()
