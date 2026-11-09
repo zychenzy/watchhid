@@ -14,9 +14,11 @@
 		4B08FA18222C37AA58EBF0DA /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 05B5D0BB50EDC1EE8902F855 /* Assets.xcassets */; };
 		51AAC040450AF10BCDF5E8B2 /* MouseInputState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04D84C02614867018A14428D /* MouseInputState.swift */; };
 		7110D9E8D8AD5FC3DC6D412D /* WatchHIDWatchApp.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = F13A56123FA0BE1B32063217 /* WatchHIDWatchApp.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		7C86C1BF3FE469311A5EE68F /* KeyboardInputState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 047E8037B023988114B6014B /* KeyboardInputState.swift */; };
 		84B97F4F6F55B1FAE7C43F70 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 9E65FE9002DE5DD83C68D2C3 /* Assets.xcassets */; };
 		8B3737AA07380EBE4D1A41F4 /* WatchHIDApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3252ADA39FC701DE6675A667 /* WatchHIDApp.swift */; };
 		8D1F7C49B3D65EAC282FC85C /* LogEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDBD31517FD5FE527FAB7FB6 /* LogEntry.swift */; };
+		91B26999AEA84E349759C8F6 /* KeyboardInputState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 047E8037B023988114B6014B /* KeyboardInputState.swift */; };
 		9DD3AC587E4E530C32127FC3 /* PeripheralProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C6C61FC4163BFA17B9A8418 /* PeripheralProbe.swift */; };
 		A25590A8B58294F64719391B /* BLEScanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5A0067C1EC1DF9909F9B731 /* BLEScanner.swift */; };
 		ACB011887E8053A42457B5C6 /* WatchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13B069EDE22D71C7F8BFD107 /* WatchApp.swift */; };
@@ -53,6 +55,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		047E8037B023988114B6014B /* KeyboardInputState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardInputState.swift; sourceTree = "<group>"; };
 		04D84C02614867018A14428D /* MouseInputState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MouseInputState.swift; sourceTree = "<group>"; };
 		05B5D0BB50EDC1EE8902F855 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		0F35DD9D8B1B5F2559F51BCC /* WatchHID.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = WatchHID.entitlements; sourceTree = "<group>"; };
@@ -152,6 +155,7 @@
 			isa = PBXGroup;
 			children = (
 				F57B97A047F9857D9E240285 /* HIDDescriptors.swift */,
+				047E8037B023988114B6014B /* KeyboardInputState.swift */,
 				DDBD31517FD5FE527FAB7FB6 /* LogEntry.swift */,
 				04D84C02614867018A14428D /* MouseInputState.swift */,
 			);
@@ -265,6 +269,7 @@
 				A25590A8B58294F64719391B /* BLEScanner.swift in Sources */,
 				3DFA40E4337FD0076A1927C6 /* ChecklistView.swift in Sources */,
 				3955D5CF2320D18CA0C38B62 /* HIDDescriptors.swift in Sources */,
+				7C86C1BF3FE469311A5EE68F /* KeyboardInputState.swift in Sources */,
 				8D1F7C49B3D65EAC282FC85C /* LogEntry.swift in Sources */,
 				51AAC040450AF10BCDF5E8B2 /* MouseInputState.swift in Sources */,
 				EAFAFCA4E0106C400FA8C904 /* ScannerView.swift in Sources */,
@@ -278,6 +283,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				E8BDAEE5F762C438837BA3A9 /* HIDDescriptors.swift in Sources */,
+				91B26999AEA84E349759C8F6 /* KeyboardInputState.swift in Sources */,
 				EFD93EDDE452DD05AB357901 /* LogEntry.swift in Sources */,
 				1793EFF2CF55D6BF98D1B922 /* LogStore.swift in Sources */,
 				BC0E392174518CBEF23FEBF6 /* MouseInputState.swift in Sources */,
