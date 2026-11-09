@@ -27,54 +27,71 @@ struct ContentView: View {
     @EnvironmentObject private var probe: PeripheralProbe
     @EnvironmentObject private var logStore: LogStore
     @EnvironmentObject private var phoneBridge: PhoneBridge
+    @State private var showSettings = false
 
     var body: some View {
-        VStack(spacing: 5) {
-            HStack {
-                Text("Mac 触控板").font(.caption.bold())
+        VStack(spacing: 4) {
+            HStack(spacing: 6) {
+                Text("触控板").font(.caption.bold())
                 Spacer()
-                Circle().fill(probe.mouseEnabled ? Color.green : Color.gray).frame(width: 7, height: 7)
+                Circle()
+                    .fill(probe.mouseEnabled ? Color.green : Color.gray)
+                    .frame(width: 7, height: 7)
+                Button { showSettings = true } label: {
+                    Image(systemName: "ellipsis.circle")
+                        .font(.caption)
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("pad-settings")
             }
             Text(probe.inputStatus)
-                .font(.system(size: 10)).lineLimit(1).minimumScaleFactor(0.65)
-            Button(probe.mouseEnabled ? "停用输入" : "启用输入") {
-                probe.toggleMouseInput()
-            }
-            .font(.caption2.bold())
-            .buttonStyle(.bordered).tint(probe.mouseEnabled ? .orange : .green)
-            .accessibilityIdentifier("mouse-enable")
+                .font(.system(size: 10))
+                .lineLimit(2)
+                .minimumScaleFactor(0.7)
 
             RoundedRectangle(cornerRadius: 14)
                 .fill(probe.mouseEnabled ? Color.blue.opacity(0.28) : Color.gray.opacity(0.15))
                 .overlay {
-                    VStack(spacing: 3) {
+                    VStack(spacing: 2) {
                         Image(systemName: probe.mouseTouching ? "hand.draw.fill" : "hand.draw")
-                        Text(probe.mouseEnabled ? "拖动移动 · 抬指停止" : "先启用，再拖动")
-                            .font(.system(size: 11))
+                        Text(probe.mouseEnabled ? "拖移 · 轻点左键 · 长按右键" : "等待就绪")
+                            .font(.system(size: 10))
+                            .multilineTextAlignment(.center)
                     }
                     .allowsHitTesting(false)
                 }
-                .frame(maxWidth: .infinity, minHeight: 75, maxHeight: .infinity)
+                .frame(maxWidth: .infinity, minHeight: 88, maxHeight: .infinity)
                 .contentShape(RoundedRectangle(cornerRadius: 14))
-                .gesture(DragGesture(minimumDistance: 0)
-                    .onChanged { value in
-                        probe.touchpadChanged(x: Double(value.location.x), y: Double(value.location.y))
-                    }
-                    .onEnded { _ in probe.touchpadEnded() })
-                .accessibilityLabel("鼠标移动触控板")
+                .gesture(
+                    DragGesture(minimumDistance: 0)
+                        .onChanged { value in
+                            probe.touchpadChanged(x: Double(value.location.x), y: Double(value.location.y))
+                        }
+                        .onEnded { _ in probe.touchpadEnded() }
+                )
+                .accessibilityLabel("触控板")
                 .accessibilityIdentifier("mouse-touchpad")
 
-            Button { probe.explicitLeftClick() } label: {
-                Label("左键单击", systemImage: "cursorarrow.click")
-                    .font(.caption2.bold()).frame(maxWidth: .infinity, minHeight: 25)
+            Button {
+                startDictation()
+            } label: {
+                Label("听写", systemImage: "mic.fill")
+                    .font(.caption2.bold())
+                    .frame(maxWidth: .infinity, minHeight: 28)
             }
-            .buttonStyle(.bordered).tint(.blue)
-            .disabled(!probe.mouseEnabled || probe.mouseTouching)
-            .accessibilityIdentifier("mouse-left-click")
-            Text("仅前台可用 · 熄屏后重新启用")
-                .font(.system(size: 9)).foregroundStyle(.secondary)
+            .buttonStyle(.borderedProminent)
+            .tint(.orange)
+            .disabled(false)
+            .accessibilityIdentifier("dictation-button")
+
+            if !probe.lastTypeStatus.isEmpty {
+                Text(probe.lastTypeStatus)
+                    .font(.system(size: 9))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
         }
-        .padding(.horizontal, 7)
+        .padding(.horizontal, 6)
         .onChange(of: scenePhase) { _, phase in probe.setInputSceneActive(phase == .active) }
         .onDisappear { probe.setInputSceneActive(false) }
         .task {
@@ -82,12 +99,110 @@ struct ContentView: View {
             if ProcessInfo.processInfo.arguments.contains("--r2-probe") {
                 _ = RuntimeEnumerator.runProbe { logStore.info($0) }
             }
-            // Normal launch prepares the same known dynamic recipe, never input.
             probe.prepareMacTouchpad()
-            logStore.info("Mac touchpad UI ready; input disabled until explicit enable/touch")
+            logStore.info("Large pad + dictation UI ready; auto-arm when Mac subscribed")
+        }
+        .sheet(isPresented: Binding(
+            get: { probe.dictationPreview != nil },
+            set: { if !$0 { probe.clearDictationPreview() } }
+        )) {
+            DictationReviewSheet()
+                .environmentObject(probe)
+        }
+        .sheet(isPresented: $showSettings) {
+            PadSettingsSheet()
+                .environmentObject(probe)
+        }
+    }
+
+    private func startDictation() {
+        guard let controller = WKApplication.shared().visibleInterfaceController else {
+            logStore.warn("Dictation unavailable: no visible interface controller")
+            return
+        }
+        // nil suggestions → system tries to open dictation directly (device; Simulator may differ).
+        controller.presentTextInputController(withSuggestions: nil, allowedInputMode: .plain) { results in
+            Task { @MainActor in
+                guard let text = results?.first as? String else {
+                    LogStore.shared.info("Dictation canceled or empty")
+                    return
+                }
+                PeripheralProbe.shared.presentDictationReview(text: text)
+            }
         }
     }
 }
+
+struct DictationReviewSheet: View {
+    @EnvironmentObject private var probe: PeripheralProbe
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("确认发送到 Mac").font(.headline)
+                Text("仅英文 ASCII 会经 HID 键盘发送；中文等非 ASCII 会被跳过，不会乱码替换。")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                Text(probe.dictationPreview ?? "")
+                    .font(.body)
+                HStack {
+                    Button("取消") {
+                        probe.clearDictationPreview()
+                        dismiss()
+                    }
+                    Spacer()
+                    Button("发送英文") {
+                        if let text = probe.dictationPreview {
+                            probe.typeReviewedASCII(text)
+                        }
+                        dismiss()
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(!(probe.keyboardFeatureEnabled && (probe.dictationPreview?.isEmpty == false)))
+                }
+                if !probe.keyboardFeatureEnabled {
+                    Text("请先在设置中打开「英文键盘 HID」（可能需重新订阅，默认关闭以保护鼠标）。")
+                        .font(.caption2)
+                        .foregroundStyle(.orange)
+                }
+            }
+            .padding()
+        }
+    }
+}
+
+struct PadSettingsSheet: View {
+    @EnvironmentObject private var probe: PeripheralProbe
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("设置").font(.headline)
+                Toggle("暂停触控输入", isOn: Binding(
+                    get: { probe.inputPausedByUser },
+                    set: { probe.setInputPaused($0) }
+                ))
+                Toggle("英文键盘 HID（实验）", isOn: Binding(
+                    get: { probe.keyboardFeatureEnabled },
+                    set: { probe.setKeyboardFeatureEnabled($0) }
+                ))
+                Text("打开键盘会换成鼠标+键盘复合描述符，可能需 Mac 重新枚举。关闭即回滚基线鼠标图。")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                if probe.keyboardBusy {
+                    Button("取消键盘发送") { probe.cancelTyping() }
+                }
+                Text(probe.inputStatus).font(.caption2)
+                Button("完成") { dismiss() }
+                    .frame(maxWidth: .infinity)
+            }
+            .padding()
+        }
+    }
+}
+
 
 @MainActor
 final class PhoneBridge: NSObject, ObservableObject, WCSessionDelegate {
