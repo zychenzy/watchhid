@@ -226,7 +226,7 @@ final class PeripheralProbe: NSObject, ObservableObject {
             log.warn("Mouse notify skipped ready=\(macInputReady) activeReport=\(activeReport != nil) subs=\(subscribedCentrals.count) bytes=\(data.count)")
             return false
         }
-                let ok = WHUpdateReport(peripheral, data, report)
+        let ok = WHUpdateReport(peripheral, data, report)
         let interesting = data.count >= 4 && (data[data.count - 4] != 0 || data[data.count - 3] != 0 || data[data.count - 2] != 0)
         let now = ProcessInfo.processInfo.systemUptime
         if !ok {
@@ -236,7 +236,7 @@ final class PeripheralProbe: NSObject, ObservableObject {
             log.info("Mouse notify accepted bytes=\(data.count) b0=\(data[0])")
         }
         return ok
-
+    }
 
     private func submitKeyboardReport(_ data: Data) -> Bool {
         guard keyboardFeatureEnabled,
