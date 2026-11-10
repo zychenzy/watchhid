@@ -2,7 +2,7 @@
 
 Use an Apple Watch as a real Bluetooth LE HID mouse for a Mac. No extra hardware, and no Mac accessibility helper for the pointer.
 
-This repository is written in English. The Watch app UI is still Chinese in the current build; the docs use the on-screen strings as they appear today.
+This repository is written in English. The Watch app UI follows the Watch system language, with English, Simplified Chinese, and Traditional Chinese; any other language falls back to English.
 
 ## Status (2026-11-10, Asia/Shanghai)
 

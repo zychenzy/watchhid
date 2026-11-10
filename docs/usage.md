@@ -2,7 +2,7 @@
 
 The Watch app must be in the foreground with the screen on. After the Watch sleeps or returns to the clock face, open WatchHID again. You do not need Xcode open, and you do not need the iPhone on a USB cable, for the Mac to receive mouse input.
 
-The current Watch UI is still in Chinese. This page uses those on-screen strings.
+The Watch UI follows the Watch system language. Only English, Simplified Chinese, and Traditional Chinese are shipped; any other language falls back to English. Change the language in Watch Settings, then reopen WatchHID.
 
 ## Mouse
 
@@ -10,7 +10,7 @@ The current Watch UI is still in Chinese. This page uses those on-screen strings
 2. Open WatchHID and leave it in the foreground. You should see status text.
 3. On a new Mac, if a Bluetooth passkey or pairing prompt appears, confirm it in the system dialog first.
 4. Drag on the large pad to move the pointer. A short tap is a left click. A long-press of about 0.55–0.6 seconds is a right click.
-5. Status should leave `等待 Mac 系统订阅` (“waiting for the Mac system to subscribe”) and look ready for touch, for example `触控就绪` or similar.
+5. Status should leave “Waiting for Mac subscription” (or `等待 Mac 系统订阅` in Chinese) and look ready for touch.
 
 Current builds auto-arm the pad when at least one Mac has subscribed to the mouse Report and the scene is active. Settings, system text input, and the preview sheet pause the pad, release held buttons, and drop queued motion.
 
@@ -26,7 +26,7 @@ If the pointer does not move, exit WatchHID and open it again before doing anyth
 
 ## Dictation
 
-The bottom button is labeled `语音听写`. It presents the system text-input interface (`presentTextInputController`). English is the first language to accept.
+The bottom button is labeled Dictation (`语音听写` in Chinese). It presents the system text-input interface (`presentTextInputController`). English is the first language to accept.
 
 1. Use the pad to click into whatever you need on the Mac, if you want the insertion point ready. Dictation text stays on the Watch unless you later enable English HID (off by default).
 2. Tap `语音听写`.

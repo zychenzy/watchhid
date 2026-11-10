@@ -15,7 +15,7 @@ final class PeripheralProbe: NSObject, ObservableObject {
     private var activeKeyboardReport: NSObject?
     @Published private(set) var mouseEnabled = false
     @Published private(set) var mouseTouching = false
-    @Published private(set) var inputStatus = "等待 Mac 订阅"
+    @Published private(set) var inputStatus = L10n.string("status.waiting_subscription")
     @Published private(set) var keyboardFeatureEnabled: Bool = UserDefaults.standard.bool(forKey: "wh.keyboardFeature")
     /// Nonisolated mirror for ATT read callbacks (must stay in sync with keyboardFeatureEnabled).
     private nonisolated(unsafe) var keyboardFeatureFlag: Bool = UserDefaults.standard.bool(forKey: "wh.keyboardFeature")
@@ -128,21 +128,21 @@ final class PeripheralProbe: NSObject, ObservableObject {
         mouseTouching = mouse.touching
         keyboardBusy = keyboard.busy
         if pendingButtonRelease {
-            inputStatus = "松键待发送 · 暂停输入"
+            inputStatus = L10n.string("status.pending_release")
         } else if !sceneActive {
-            inputStatus = "已暂停 · 返回后轻触继续"
+            inputStatus = L10n.string("status.scene_inactive")
         } else if inputUIBlocked {
-            inputStatus = "面板暂停 · 关闭弹窗后恢复"
+            inputStatus = L10n.string("status.ui_blocked")
         } else if inputPausedByUser {
-            inputStatus = "已手动暂停"
+            inputStatus = L10n.string("status.paused_by_user")
         } else if !macInputReady {
-            inputStatus = "等待 Mac 系统订阅"
+            inputStatus = L10n.string("status.waiting_subscription")
         } else if mouse.enabled {
             inputStatus = keyboardFeatureEnabled
-                ? (keyboardReady ? "触控就绪 · 听写英文可发" : "触控就绪 · 键盘待订阅")
-                : "触控就绪 · 轻点/拖动/长按"
+                ? (keyboardReady ? L10n.string("status.ready_keyboard_ok") : L10n.string("status.ready_keyboard_wait"))
+                : L10n.string("status.ready_mouse")
         } else {
-            inputStatus = "Mac 已订阅 · 准备中"
+            inputStatus = L10n.string("status.preparing")
         }
         retryPendingRelease()
     }
@@ -193,14 +193,14 @@ final class PeripheralProbe: NSObject, ObservableObject {
             if !submitMouseReport(right) {
                 _ = mouse.disarm()
                 refreshInputGate()
-                inputStatus = "发送忙 · 返回后继续"
+                inputStatus = L10n.string("status.send_busy")
                 return
             }
         }
         if let report = mouse.frame(at: now), !submitMouseReport(report) {
             _ = mouse.disarm()
             refreshInputGate()
-            inputStatus = "发送忙 · 返回后继续"
+            inputStatus = L10n.string("status.send_busy")
         }
     }
 
@@ -265,21 +265,23 @@ final class PeripheralProbe: NSObject, ObservableObject {
     /// Review-confirmed ASCII only. Logs length/skipped — never plaintext.
     func typeReviewedASCII(_ text: String) {
         guard keyboardFeatureEnabled else {
-            lastTypeStatus = "键盘功能关闭"
+            lastTypeStatus = L10n.string("type.keyboard_off")
             return
         }
         guard keyboardReady, keyboard.enabled else {
-            lastTypeStatus = "键盘未就绪"
+            lastTypeStatus = L10n.string("type.keyboard_not_ready")
             return
         }
         let asciiCount = text.unicodeScalars.filter { $0.isASCII }.count
         let nonASCII = text.unicodeScalars.count - asciiCount
         guard keyboard.enqueueASCII(text) else {
-            lastTypeStatus = keyboard.busy ? "键盘忙" : "无法排队"
+            lastTypeStatus = keyboard.busy ? L10n.string("type.keyboard_busy") : L10n.string("type.cannot_queue")
             log.warn("Type refused busy=\(keyboard.busy) asciiChars=\(asciiCount) nonASCII=\(nonASCII)")
             return
         }
-        lastTypeStatus = "发送中 · ASCII \(asciiCount)" + (nonASCII > 0 ? " · 跳过非ASCII \(nonASCII)" : "")
+        lastTypeStatus = nonASCII > 0
+            ? L10n.string("type.sending_skipped", asciiCount, nonASCII)
+            : L10n.string("type.sending", asciiCount)
         log.info("Type queued ascii=\(asciiCount) skippedNonASCII=\(nonASCII) skippedUnsupported=\(keyboard.skippedUnsupported)")
         startKeyboardTimer()
         dictationPreview = nil
@@ -288,7 +290,7 @@ final class PeripheralProbe: NSObject, ObservableObject {
     func cancelTyping() {
         if let release = keyboard.cancel() { _ = submitKeyboardReport(release) }
         stopKeyboardTimer()
-        lastTypeStatus = "已取消"
+        lastTypeStatus = L10n.string("type.cancelled")
         refreshInputGate()
     }
 
@@ -318,14 +320,14 @@ final class PeripheralProbe: NSObject, ObservableObject {
             if !submitKeyboardReport(step) {
                 if let release = keyboard.cancel() { _ = submitKeyboardReport(release) }
                 stopKeyboardTimer()
-                lastTypeStatus = "键盘发送忙 · 已停止"
+                lastTypeStatus = L10n.string("type.send_busy_stopped")
                 refreshInputGate()
                 return
             }
         }
         if !keyboard.busy {
             stopKeyboardTimer()
-            lastTypeStatus = "发送完成 · 跳过 \(keyboard.skippedUnsupported)"
+            lastTypeStatus = L10n.string("type.send_complete", keyboard.skippedUnsupported)
             refreshInputGate()
         } else {
             keyboardBusy = true
