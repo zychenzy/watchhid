@@ -7,6 +7,9 @@ struct MouseInputState {
     static let interval: TimeInterval = 1.0 / 30.0
     static let dragThreshold: Double = 6.0
     static let longPress: TimeInterval = 0.55
+    /// Crown units to HID wheel ticks. Positive crown delta scrolls down.
+    static let wheelScale: Double = 3.0
+    static let wheelBacklog: Double = 254
 
     enum GestureOutcome: Equatable {
         case none
@@ -28,10 +31,13 @@ struct MouseInputState {
     private var touchBeganAt = 0.0
     private var pendingX = 0.0
     private var pendingY = 0.0
+    private var pendingWheel = 0.0
     private var lastFrame = -Double.infinity
     private var longPressFired = false
     /// When true, encoded mouse reports are prefixed with Report ID 1 (composite map).
     var usesReportID = false
+
+    var hasPendingWheel: Bool { abs(pendingWheel) >= 1 }
 
     mutating func availability(active: Bool, macReady: Bool) -> Data? {
         self.active = active
@@ -48,6 +54,7 @@ struct MouseInputState {
     mutating func disarm() -> Data? {
         enabled = false
         endTouchQuiet()
+        pendingWheel = 0
         return releaseButtons()
     }
 
@@ -90,16 +97,31 @@ struct MouseInputState {
         return encode(buttons: buttons, x: 0, y: 0)
     }
 
+    /// Accumulate Digital Crown rotation into the existing baseline wheel byte.
+    /// Positive `delta` (increasing digitalCrownRotation / event.offset) is
+    /// treated as scroll-down, matching typical Watch list motion, and is
+    /// stored as a negative HID wheel value.
+    mutating func addCrownDelta(_ delta: Double) {
+        guard enabled && active && macReady && delta.isFinite, delta != 0 else { return }
+        pendingWheel = max(-Self.wheelBacklog, min(Self.wheelBacklog, pendingWheel + (-delta * Self.wheelScale)))
+    }
+
     /// Baseline movement: emit while touching whenever pending deltas exist (does NOT require dragged).
+    /// Wheel may emit without a touch, still on the same 4-byte report.
     mutating func frame(at now: TimeInterval) -> Data? {
-        guard touching && enabled && active && macReady && now.isFinite,
+        guard enabled && active && macReady && now.isFinite,
               now - lastFrame >= Self.interval else { return nil }
-        let x = max(-127, min(127, Int(pendingX)))
-        let y = max(-127, min(127, Int(pendingY)))
-        guard x != 0 || y != 0 else { return nil }
-        pendingX -= Double(x); pendingY -= Double(y)
+        let x = touching ? max(-127, min(127, Int(pendingX))) : 0
+        let y = touching ? max(-127, min(127, Int(pendingY))) : 0
+        let wheel = max(-127, min(127, Int(pendingWheel)))
+        guard x != 0 || y != 0 || wheel != 0 else { return nil }
+        if touching {
+            pendingX -= Double(x)
+            pendingY -= Double(y)
+        }
+        pendingWheel -= Double(wheel)
         lastFrame = now
-        return encode(buttons: buttons, x: x, y: y)
+        return encode(buttons: buttons, x: x, y: y, wheel: wheel)
     }
 
     mutating func endTouch(at now: TimeInterval) -> (moveFlush: Data?, outcome: GestureOutcome, release: Data?) {
@@ -127,6 +149,7 @@ struct MouseInputState {
         touching = false
         dragged = false
         pendingX = 0; pendingY = 0
+        // Wheel is independent of a finger lift; only availability/disarm drops it.
     }
 
     mutating func pressClick(buttonMask: UInt8 = 0x01) -> Data? {
@@ -145,8 +168,8 @@ struct MouseInputState {
 
     mutating func releaseClick() -> Data? { releaseButtons() }
 
-    private func encode(buttons: UInt8, x: Int, y: Int) -> Data {
-        var bytes: [UInt8] = [buttons, UInt8(bitPattern: Int8(x)), UInt8(bitPattern: Int8(y)), 0]
+    private func encode(buttons: UInt8, x: Int, y: Int, wheel: Int = 0) -> Data {
+        var bytes: [UInt8] = [buttons, UInt8(bitPattern: Int8(x)), UInt8(bitPattern: Int8(y)), UInt8(bitPattern: Int8(wheel))]
         if usesReportID {
             bytes.insert(1, at: 0)
         }

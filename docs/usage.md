@@ -10,9 +10,10 @@ The Watch UI follows the Watch system language. Only English, Simplified Chinese
 2. Open WatchHID and leave it in the foreground. You should see status text.
 3. On a new Mac, if a Bluetooth passkey or pairing prompt appears, confirm it in the system dialog first.
 4. Drag on the large pad to move the pointer. A short tap is a left click. A long-press of about 0.55–0.6 seconds is a right click.
-5. Status should leave “Waiting for Mac subscription” (or `等待 Mac 系统订阅` in Chinese) and look ready for touch.
+5. On the pad, rotate the Digital Crown to scroll vertically. This uses the wheel field already present in the baseline 4-byte mouse report; the bonded Report Map is not changed. Every current Apple Watch has a Digital Crown; this is not the Ultra Action button.
+6. Status should leave “Waiting for Mac subscription” (or `等待 Mac 系统订阅` in Chinese) and look ready for touch.
 
-Current builds auto-arm the pad when at least one Mac has subscribed to the mouse Report and the scene is active. Settings and system text input pause the pad, release held buttons, and drop queued motion. Sending keyboard text also pauses the pad until it finishes or you cancel.
+Current builds auto-arm the pad when at least one host has subscribed to the mouse Report and the scene is active. Settings and system text input pause the pad, release held buttons, and drop queued motion and wheel. The Crown then stays with those system or Settings interfaces; when you return to the pad, the pad takes Crown focus again. Sending keyboard text also pauses the pad until it finishes or you cancel.
 
 To confirm identity on this Mac:
 

@@ -322,11 +322,7 @@ final class PeripheralProbe: NSObject, ObservableObject {
         let now = ProcessInfo.processInfo.systemUptime
         if !mouse.touching {
             mouse.beginTouch(x: x, y: y, at: now)
-            let timer = Timer(timeInterval: MouseInputState.interval, repeats: true) { [weak self] _ in
-                Task { @MainActor in self?.drainTouchpad() }
-            }
-            inputTimer?.invalidate(); inputTimer = timer
-            RunLoop.main.add(timer, forMode: .common)
+            ensureInputTimer()
         } else {
             mouse.moveTouch(x: x, y: y)
         }
@@ -337,7 +333,6 @@ final class PeripheralProbe: NSObject, ObservableObject {
         let now = ProcessInfo.processInfo.systemUptime
         let result = mouse.endTouch(at: now)
         mouseTouching = false
-        inputTimer?.invalidate(); inputTimer = nil
         if let flush = result.moveFlush { _ = submitMouseReport(flush) }
         if let release = result.release { finishMouseRelease(release) }
         switch result.outcome {
@@ -350,6 +345,31 @@ final class PeripheralProbe: NSObject, ObservableObject {
             break
         }
         refreshInputGate()
+        stopInputTimerIfIdle()
+    }
+
+    /// Digital Crown rotation on the focused pad. Settings and system
+    /// dictation keep the pad unfocused so the Crown stays with those UIs.
+    func crownRotated(delta: Double) {
+        guard mouse.enabled && macInputReady && sceneActive && !inputPausedByUser && !inputUIBlocked else { return }
+        mouse.addCrownDelta(delta)
+        ensureInputTimer()
+        drainTouchpad()
+    }
+
+    private func ensureInputTimer() {
+        guard inputTimer == nil else { return }
+        let timer = Timer(timeInterval: MouseInputState.interval, repeats: true) { [weak self] _ in
+            Task { @MainActor in self?.drainTouchpad() }
+        }
+        inputTimer = timer
+        RunLoop.main.add(timer, forMode: .common)
+    }
+
+    private func stopInputTimerIfIdle() {
+        guard !mouse.touching && !mouse.hasPendingWheel else { return }
+        inputTimer?.invalidate()
+        inputTimer = nil
     }
 
     private func drainTouchpad() {
@@ -367,7 +387,9 @@ final class PeripheralProbe: NSObject, ObservableObject {
             _ = mouse.disarm()
             refreshInputGate()
             inputStatus = L10n.string("status.send_busy")
+            return
         }
+        stopInputTimerIfIdle()
     }
 
     func explicitLeftClick() { performClick(buttonMask: 0x01) }
@@ -415,7 +437,7 @@ final class PeripheralProbe: NSObject, ObservableObject {
             return false
         }
         let ok = WHUpdateReportToCentrals(peripheral, data, report, targets as [Any])
-        let interesting = data.count >= 4 && (data[data.count - 4] != 0 || data[data.count - 3] != 0 || data[data.count - 2] != 0)
+        let interesting = data.count >= 4 && (data[data.count - 4] != 0 || data[data.count - 3] != 0 || data[data.count - 2] != 0 || data[data.count - 1] != 0)
         let now = ProcessInfo.processInfo.systemUptime
         if !ok {
             log.warn("Mouse notify REJECTED bytes=\(data.count) targets=\(targets.count)")

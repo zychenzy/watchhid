@@ -29,6 +29,8 @@ struct ContentView: View {
     @EnvironmentObject private var phoneBridge: PhoneBridge
     @State private var showSettings = false
     @State private var dictationPresented = false
+    @State private var crownValue = 0.0
+    @FocusState private var padFocused: Bool
     #if targetEnvironment(simulator)
     @State private var simulatorCheckRan = false
     #endif
@@ -113,9 +115,40 @@ struct ContentView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .ignoresSafeArea()
-        .onAppear { probe.setInputSceneActive(scenePhase == .active) }
-        .onChange(of: inputOverlayVisible) { _, blocked in probe.setInputUIBlocked(blocked) }
-        .onChange(of: scenePhase) { _, phase in probe.setInputSceneActive(phase == .active) }
+        .focusable(!inputOverlayVisible)
+        .focusEffectDisabled()
+        .focused($padFocused)
+        .digitalCrownRotation(
+            $crownValue,
+            from: -1000,
+            through: 1000,
+            sensitivity: .medium,
+            isContinuous: true,
+            isHapticFeedbackEnabled: false
+        )
+        .onChange(of: crownValue) { oldValue, newValue in
+            guard !inputOverlayVisible else { return }
+            var delta = newValue - oldValue
+            let span = 2000.0
+            if abs(delta) > span / 2 {
+                delta += delta > 0 ? -span : span
+            }
+            probe.crownRotated(delta: delta)
+        }
+        .onAppear {
+            probe.setInputSceneActive(scenePhase == .active)
+            padFocused = !inputOverlayVisible
+        }
+        .onChange(of: inputOverlayVisible) { _, blocked in
+            probe.setInputUIBlocked(blocked)
+            padFocused = !blocked
+        }
+        .onChange(of: scenePhase) { _, phase in
+            probe.setInputSceneActive(phase == .active)
+            if phase == .active && !inputOverlayVisible {
+                padFocused = true
+            }
+        }
         .onDisappear { probe.setInputSceneActive(false) }
         .task {
             probe.setInputSceneActive(scenePhase == .active)

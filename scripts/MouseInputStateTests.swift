@@ -58,6 +58,37 @@ func runMouseTests() {
     check(mouse.arm(), "id arm")
     check(mouse.pressClick() == Data([1, 1, 0, 0, 0]), "report id prefixed left")
     _ = mouse.releaseClick()
+    mouse.usesReportID = false
+
+    // Digital Crown uses the existing 4-byte wheel field. The Report Map is unchanged.
+    check(HIDDescriptors.mouseReportMap.contains(0x38), "baseline map still includes wheel usage")
+    var wheelMouse = MouseInputState()
+    check(wheelMouse.frame(at: 0) == nil, "wheel default no output")
+    _ = wheelMouse.availability(active: true, macReady: true)
+    check(wheelMouse.arm(), "wheel arm")
+    wheelMouse.addCrownDelta(1)
+    let down = wheelMouse.frame(at: 0)
+    check(down == Data([0, 0, 0, UInt8(bitPattern: Int8(-3))]), "crown +1 is HID wheel -3, still 4 bytes")
+    check(wheelMouse.pressClick() == Data([1, 0, 0, 0]), "click reports keep wheel 0")
+    _ = wheelMouse.releaseClick()
+    wheelMouse.addCrownDelta(1000)
+    let clamped = wheelMouse.frame(at: 0.05)
+    check(clamped == Data([0, 0, 0, UInt8(bitPattern: Int8(-127))]), "wheel frame clamps to -127")
+    check(wheelMouse.hasPendingWheel, "backlog remains after one clamped frame")
+    check(wheelMouse.frame(at: 0.06) == nil, "interval backpressure withholds the next wheel frame")
+    _ = wheelMouse.availability(active: false, macReady: true)
+    check(!wheelMouse.hasPendingWheel, "disarm drops stale wheel")
+    check(wheelMouse.frame(at: 1) == nil, "inactive cannot emit leftover wheel")
+    _ = wheelMouse.availability(active: true, macReady: true)
+    check(wheelMouse.arm(), "rearm after wheel drop")
+    check(wheelMouse.frame(at: 2) == nil, "rearm does not replay dropped wheel")
+    wheelMouse.addCrownDelta(-2)
+    let up = wheelMouse.frame(at: 2)
+    check(up == Data([0, 0, 0, 6]), "crown -2 is HID wheel +6")
+    _ = wheelMouse.availability(active: true, macReady: true)
+    wheelMouse.addCrownDelta(1)
+    _ = wheelMouse.availability(active: true, macReady: false)
+    check(wheelMouse.frame(at: 3) == nil && !wheelMouse.hasPendingWheel, "subscription loss drops pending wheel")
 }
 
 func runKeyboardTests() {
@@ -116,12 +147,17 @@ func runLifecycleAndMetadataTests() {
     check(m.frame(at: 3) == nil, "resubscribe requires fresh touch")
 }
 
-runMouseTests()
-runKeyboardTests()
-runLifecycleAndMetadataTests()
-if failed == 0 {
-    print("All logic tests passed")
-} else {
-    fputs("\(failed) failures\n", stderr)
-    exit(1)
+@main
+struct MouseInputStateTests {
+    static func main() {
+        runMouseTests()
+        runKeyboardTests()
+        runLifecycleAndMetadataTests()
+        if failed == 0 {
+            print("All logic tests passed")
+        } else {
+            fputs("\(failed) failures\n", stderr)
+            exit(1)
+        }
+    }
 }
