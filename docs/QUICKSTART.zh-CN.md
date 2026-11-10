@@ -19,7 +19,8 @@
 
 ## 本地包与回滚
 Mac mini：`~/projects/watchhid/build/diagnostics/recovery-root/`
-- `WatchHID-voice-primary.zip`：当前候选，源码19e2b13。
+- `WatchHID-return-home-candidate.zip`：整理后的可装候选，源码8db3f5d；新增测试入口仅编译到模拟器，未重新装到离家的手表。
+- `WatchHID-voice-primary.zip`：目前最后装到手表的版本，源码19e2b13。
 - `WatchHID-large-static.zip`：大触控板成功基线，源码3d714db。
 - `WatchHID-accepted-static-rollback.zip`：带启用按钮的成功旧版，源码6d62b8e。
 
