@@ -74,8 +74,10 @@ struct ContentView: View {
                     Spacer(minLength: 0)
                 }
                 .padding(.leading, 6)
-                // Leave the top-right corner clear for the system time.
+                // Keep the original height, in line with the system time.
+                // Leave the top-right corner clear for the clock.
                 .padding(.trailing, 52)
+                .padding(.top, 16)
 
                 Spacer(minLength: 0)
                     .allowsHitTesting(false)
@@ -110,7 +112,7 @@ struct ContentView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .ignoresSafeArea(edges: .bottom)
+        .ignoresSafeArea()
         .onAppear { probe.setInputSceneActive(scenePhase == .active) }
         .onChange(of: inputOverlayVisible) { _, blocked in probe.setInputUIBlocked(blocked) }
         .onChange(of: scenePhase) { _, phase in probe.setInputSceneActive(phase == .active) }
