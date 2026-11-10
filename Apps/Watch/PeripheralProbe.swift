@@ -26,6 +26,7 @@ final class PeripheralProbe: NSObject, ObservableObject {
     @Published private(set) var lastTypeStatus = ""
     private var pendingTypeText: String?
     private var typeRetryTask: Task<Void, Never>?
+    private var advertiseRetryTask: Task<Void, Never>?
     @Published private(set) var keyboardBusy = false
     private var lastMouseNotifyLog = -Double.infinity
     private var mouse = MouseInputState()
@@ -82,7 +83,10 @@ final class PeripheralProbe: NSObject, ObservableObject {
             stopKeyboardTimer()
         }
         refreshInputGate()
-        if active { resumePendingType() }
+        if active {
+            resumePendingType()
+            scheduleAdvertiseRetryIfNeeded()
+        }
     }
 
     func setInputUIBlocked(_ blocked: Bool) {
@@ -107,8 +111,10 @@ final class PeripheralProbe: NSObject, ObservableObject {
         UserDefaults.standard.bool(forKey: "wh.keyboardFeature")
     }
 
-    /// Adding or removing the keyboard HID service republishes GATT, but the
-    /// mouse Report Map stays the accepted no-Report-ID baseline.
+    /// The keyboard HID service is added only after the mouse Report is
+    /// subscribed. Turning it off leaves published services in place so the
+    /// mouse bond is not torn down. The mouse Report Map stays the accepted
+    /// no-Report-ID baseline.
     func setKeyboardFeatureEnabled(_ enabled: Bool) {
         guard enabled != keyboardFeatureEnabled else { return }
         keyboardFeatureEnabled = enabled
@@ -116,10 +122,14 @@ final class PeripheralProbe: NSObject, ObservableObject {
         UserDefaults.standard.set(enabled, forKey: "wh.keyboardFeature")
         mouse.usesReportID = false
         keyboard.usesReportID = false
-        log.info("Keyboard feature \(enabled ? "ON" : "OFF"); republishing services (mouse map unchanged)")
-        let wasRunning = isRunning
-        if wasRunning { stop() }
-        if wasRunning { prepareMacTouchpad() }
+        if enabled {
+            log.info("Keyboard feature ON; adding keyboard HID after the mouse is subscribed")
+            addKeyboardHIDServiceIfNeeded()
+        } else {
+            log.info("Keyboard feature OFF; leaving published HID services so the mouse bond is not torn down")
+            if let release = keyboard.cancel() { _ = submitKeyboardReport(release) }
+            stopKeyboardTimer()
+        }
         refreshInputGate()
     }
 
@@ -390,6 +400,7 @@ final class PeripheralProbe: NSObject, ObservableObject {
         typeRetryTask?.cancel()
         typeRetryTask = nil
         pendingTypeText = nil
+        cancelAdvertiseRetry()
         if let release = keyboard.cancel() { _ = submitKeyboardReport(release) }
         stopKeyboardTimer()
         lastTypeStatus = L10n.string("type.cancelled")
@@ -724,13 +735,13 @@ final class PeripheralProbe: NSObject, ObservableObject {
 
         keyboardHIDServiceObject = nil
         keyboardReportObject = nil
-        pendingServiceObjects = [hid]
-        if keyboardFeatureEnabled, let keyboardHID = buildKeyboardHIDService(uuidOverride: expanded ? "00001812-0000-1000-8000-00805F9B34FB" : nil) {
-            keyboardHIDServiceObject = keyboardHID
-            pendingServiceObjects.append(keyboardHID)
-            log.info("Adding separate keyboard HID service; mouse Report Map unchanged")
+        // Publish the accepted mouse-only HID layout first. A second 1812
+        // keyboard service is added only after the Mac subscribes to the mouse
+        // Report, so a process restart does not change the bonded map up front.
+        pendingServiceObjects = [hid, battery, info]
+        if keyboardFeatureEnabled {
+            log.info("Keyboard feature on; will add keyboard HID after mouse Report is subscribed")
         }
-        pendingServiceObjects.append(contentsOf: [battery, info])
         expectedServiceCount = pendingServiceObjects.count
         addedServiceCount = 0
 
@@ -901,6 +912,52 @@ final class PeripheralProbe: NSObject, ObservableObject {
         return service
     }
 
+    /// Add the keyboard HID service only after the mouse Report has a subscriber.
+    private func addKeyboardHIDServiceIfNeeded() {
+        guard keyboardFeatureEnabled, isRunning, keyboardHIDServiceObject == nil,
+              macInputReady, let dyn = dynamicPeripheral else { return }
+        let expanded = experiment.hasPrefix("standard128")
+        guard let keyboardHID = buildKeyboardHIDService(uuidOverride: expanded ? "00001812-0000-1000-8000-00805F9B34FB" : nil) else {
+            log.error("Failed to construct keyboard HID service")
+            return
+        }
+        keyboardHIDServiceObject = keyboardHID
+        expectedServiceCount = addedServiceCount + 1
+        log.info("Adding separate keyboard HID service after mouse subscribe; mouse Report Map unchanged")
+        if let exception = WHAddServiceChecked(dyn, keyboardHID) {
+            log.error("addService keyboard exception: \(exception)")
+            keyboardHIDServiceObject = nil
+            keyboardReportObject = nil
+        }
+    }
+
+    private func scheduleAdvertiseRetryIfNeeded() {
+        guard isRunning, subscribedCentrals.isEmpty, sceneActive else { return }
+        guard advertiseRetryTask == nil else { return }
+        advertiseRetryTask = Task { @MainActor [weak self] in
+            guard let self else { return }
+            for attempt in 1...6 {
+                try? await Task.sleep(for: .seconds(3))
+                if Task.isCancelled { return }
+                guard self.isRunning, self.subscribedCentrals.isEmpty else {
+                    self.advertiseRetryTask = nil
+                    return
+                }
+                self.log.info("No mouse Report subscriber; restarting advertising attempt=\(attempt)")
+                if let dyn = self.dynamicPeripheral {
+                    WHStopAdvertising(dyn)
+                    self.startAdvertising()
+                }
+            }
+            self.advertiseRetryTask = nil
+        }
+    }
+
+    private func cancelAdvertiseRetry() {
+        advertiseRetryTask?.cancel()
+        advertiseRetryTask = nil
+    }
+
     private func startAdvertising() {
         guard let dyn = dynamicPeripheral else { return }
         var advertisement: [String: Any] = [WHAdvertisementLocalNameKey: HIDDescriptors.localName]
@@ -1026,7 +1083,9 @@ extension PeripheralProbe: CBPeripheralManagerDelegate {
                     self.reportSubscriberCount = self.subscribedCentrals.count
                     self.activeReport = characteristic
                     self.retryPendingRelease()
+                    self.cancelAdvertiseRetry()
                     self.log.info("Input gate updated; no new input, except completing a pending explicit click release")
+                    self.addKeyboardHIDServiceIfNeeded()
                 }
                 self.refreshInputGate()
                 self.resumePendingType()
@@ -1096,6 +1155,7 @@ extension PeripheralProbe: CBPeripheralManagerDelegate {
                 self.advertisingConfirmed = peripheral.isAdvertising
                 self.log.info("didStartAdvertising OK — isAdvertising=\(peripheral.isAdvertising)")
                 self.statusSummary = peripheral.isAdvertising ? "Advertising: Watch Mouse" : "Advertise OK but isAdvertising=false"
+                self.scheduleAdvertiseRetryIfNeeded()
             }
             if let waiter = self.restorationWaiter {
                 self.restorationWaiter = nil
