@@ -252,8 +252,21 @@ def verify_status_message(found: bool) -> tuple[str, int]:
     return text, 1
 
 
-def run_bounded(cmd: list[str], timeout: int, cwd: str | None = None) -> subprocess.CompletedProcess:
-    """Run a command with a hard timeout, streaming redacted output."""
+def run_bounded(
+    cmd: list[str],
+    timeout: int,
+    cwd: str | None = None,
+    redact_output: bool = True,
+    stdout_path: str | None = None,
+) -> subprocess.CompletedProcess:
+    """Run a command with a hard timeout.
+
+    Human-facing stdout/stderr is redacted by default. When stdout_path is
+    set, the raw (unredacted) stdout is written only to that file so a
+    later parse (for example ioreg XML) is not corrupted by placeholders
+    such as "<redacted-id>".
+    """
+    raw_stdout = open(stdout_path, "w", encoding="utf-8") if stdout_path else None
     proc = subprocess.Popen(
         cmd,
         cwd=cwd,
@@ -265,17 +278,30 @@ def run_bounded(cmd: list[str], timeout: int, cwd: str | None = None) -> subproc
     )
     collected = {"out": [], "err": []}
 
-    def pump(src, dest, bucket):
+    def pump(src, dest, bucket, do_redact):
         if src is None:
             return
-        for line in iter(src.readline, ""):
-            text = redact_text(line)
-            dest.write(text)
-            dest.flush()
-            bucket.append(text)
+        try:
+            for line in iter(src.readline, ""):
+                stored = redact_text(line) if do_redact else line
+                if dest is not None:
+                    dest.write(stored)
+                    dest.flush()
+                bucket.append(stored)
+        finally:
+            if dest is not None and dest not in (sys.stdout, sys.stderr):
+                dest.close()
 
-    t_out = threading.Thread(target=pump, args=(proc.stdout, sys.stdout, collected["out"]))
-    t_err = threading.Thread(target=pump, args=(proc.stderr, sys.stderr, collected["err"]))
+    stdout_dest = raw_stdout if raw_stdout is not None else (sys.stdout if redact_output else sys.stdout)
+    # Never stream unredacted stdout to the terminal when a capture file is used.
+    if raw_stdout is not None:
+        stdout_dest = raw_stdout
+        stdout_redact = False
+    else:
+        stdout_dest = sys.stdout
+        stdout_redact = redact_output
+    t_out = threading.Thread(target=pump, args=(proc.stdout, stdout_dest, collected["out"], stdout_redact))
+    t_err = threading.Thread(target=pump, args=(proc.stderr, sys.stderr, collected["err"], True))
     t_out.daemon = True
     t_err.daemon = True
     t_out.start()
@@ -303,6 +329,10 @@ def run_bounded(cmd: list[str], timeout: int, cwd: str | None = None) -> subproc
         time.sleep(0.05)
     t_out.join(timeout=2)
     t_err.join(timeout=2)
+    if proc.stdout:
+        proc.stdout.close()
+    if proc.stderr:
+        proc.stderr.close()
     return subprocess.CompletedProcess(
         cmd, proc.returncode, "".join(collected["out"]), "".join(collected["err"])
     )
@@ -369,6 +399,8 @@ def _cli(argv: list[str] | None = None) -> int:
 
     p_run = sub.add_parser("run-bounded")
     p_run.add_argument("--timeout", type=int, required=True)
+    p_run.add_argument("--stdout", dest="stdout_path", default="", help="Write raw unredacted stdout to this file")
+    p_run.add_argument("--no-redact-stdout", action="store_true", help="Do not redact stdout streamed to the terminal")
     p_run.add_argument("command", nargs=argparse.REMAINDER)
 
     p_prov = sub.add_parser("provision-info")
@@ -412,7 +444,12 @@ def _cli(argv: list[str] | None = None) -> int:
         if not command:
             print("run-bounded needs a command", file=sys.stderr)
             return 2
-        proc = run_bounded(command, args.timeout)
+        proc = run_bounded(
+            command,
+            args.timeout,
+            redact_output=not args.no_redact_stdout,
+            stdout_path=args.stdout_path or None,
+        )
         return proc.returncode
     if args.cmd == "provision-info":
         return provision_info(args.app_path, args.env_file)

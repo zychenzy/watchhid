@@ -352,5 +352,41 @@ class InstallScriptDryRunTests(unittest.TestCase):
             self.assertTrue(bad_proc.stdout.startswith("NO:"))
 
 
+
+class IoregParseOrderTests(unittest.TestCase):
+    def _xml_with_uuid(self):
+        nodes = [hid_node("WatchHID", "Ultra2-R1", pairs=MOUSE_POINTER_PAIRS)]
+        nodes[0]["SerialNumber"] = FAKE_UUID
+        return plistlib.dumps(nodes, fmt=plistlib.FMT_XML)
+
+    def test_redacting_xml_before_parse_breaks_plist(self):
+        raw = self._xml_with_uuid()
+        self.assertIsNotNone(lib.find_watchhid_pointer_node(lib.load_ioreg_data(raw)))
+        redacted = lib.redact_text(raw.decode("utf-8")).encode("utf-8")
+        with self.assertRaises(Exception):
+            plistlib.loads(redacted)
+
+    def test_run_bounded_stdout_path_keeps_raw_xml_parseable(self):
+        raw = self._xml_with_uuid()
+        with tempfile.TemporaryDirectory() as tmp:
+            src = Path(tmp) / "in.xml"
+            dest = Path(tmp) / "out.xml"
+            src.write_bytes(raw)
+            proc = lib.run_bounded(
+                [sys.executable, "-c", "import sys; sys.stdout.buffer.write(open(sys.argv[1], 'rb').read())", str(src)],
+                timeout=10,
+                redact_output=True,
+                stdout_path=str(dest),
+            )
+            self.assertEqual(proc.returncode, 0)
+            saved = dest.read_bytes()
+            self.assertIn(FAKE_UUID.encode(), saved)
+            data = lib.load_ioreg_data(saved)
+            self.assertIsNotNone(lib.find_watchhid_pointer_node(data))
+            # Default streaming redaction would have broken this XML.
+            with self.assertRaises(Exception):
+                plistlib.loads(lib.redact_text(saved.decode("utf-8")).encode("utf-8"))
+
+
 if __name__ == '__main__':
     unittest.main()
