@@ -24,6 +24,17 @@ To confirm identity on this Mac:
 
 If the pointer does not move, exit WatchHID and open it again before doing anything else. Do not reset Bluetooth or unpair the system Apple Watch.
 
+## Output
+
+Reports go to only one subscribed host at a time. The Settings list shows the hosts that have actually subscribed, labeled Device 1, Device 2, and so on. Those numbers stay with the same connection. They are not “Mac” or “iPhone” labels: the Watch is not given a reliable operating-system name, so the app does not guess.
+
+1. Open Settings from the control at the top left of the pad.
+2. If more than one host is listed and none is selected, status is “Choose output” (or `请选择输出` / `請選擇輸出`). Pick one. The pad does not send reports until a host can be resolved.
+3. Tap Test to send a small pointer movement to that host only, or drag on the pad. Watch the machine you care about. Test is not a click.
+4. Ready means the selected host has subscribed. It does not mean you have already seen the pointer move on that device.
+
+The selected host is remembered. If it reconnects, reports go back to it. If it is away and only one other host is connected, that remaining host is used temporarily. If it is away and two or more hosts are still connected, pick one again. A previous “Automatic (prefer Mac)” mode and manual Mac/iPhone labels are no longer used; stale labels are cleared on launch.
+
 ## Dictation
 
 The bottom button is labeled Dictation (`语音听写` in Chinese). It presents the system text-input interface (`presentTextInputController`). After you accept the result, typable English is typed into the focused Mac field, including after the system sheet briefly backgrounds the Watch app. The Watch does not show the captured text. While the system interface is up, the button reads Dictating (`听写中`). While text is being sent, it becomes Cancel (`取消`).
@@ -44,6 +55,8 @@ Only US-ASCII is mapped; Chinese and other non-ASCII characters are skipped. Thi
 
 Confirmed on more than one Mac: Watch BLE HID reports can move the system pointer; a short drag and tap work; USB unplug of the iPhone does not stop an already working mouse; same-node identity `WatchHID` / `Ultra2-R1`; system dictation can capture text on the Watch.
 
-Not fully confirmed: typing dictation into a Mac text field through a separate keyboard HID service; a working mouse while no iPhone is nearby on Wi-Fi (wireless isolation); every reconnect and restart combination.
+The operator has confirmed that the Watch could control the iPhone while outdoors, several minutes away from the Mac and on a different Wi-Fi network. That is a real user confirmation; it has not been instrumented on this Mac.
+
+Not fully confirmed: typing dictation into a Mac text field through a separate keyboard HID service; a working mouse while no iPhone is nearby on Wi-Fi as a formal isolation test; every reconnect and restart combination; which listed Device N is the iPhone or the Mac without a local test.
 
 Simulator checks cover UI and the system text-input callback only. They do not prove BLE HOGP, cursor movement, or speech recognition. See [SIMULATOR-CHECKS.md](SIMULATOR-CHECKS.md).

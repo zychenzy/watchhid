@@ -24,6 +24,8 @@
 "status.ready_keyboard_ok" = "已就緒";
 "status.ready_keyboard_wait" = "等待鍵盤";
 "status.ready_mouse" = "已就緒";
+"status.ready_device" = "已就緒 · 裝置 %d";
+"status.choose_output" = "請選擇輸出";
 "status.preparing" = "準備中";
 "status.send_busy" = "傳送中";
 "type.keyboard_off" = "鍵盤已關";
@@ -37,11 +39,10 @@
 "type.send_busy_stopped" = "已停止";
 "type.send_complete" = "已傳送";
 "settings.output" = "輸出裝置";
-"settings.output_auto" = "自動（優先 Mac）";
 "settings.output_none" = "還沒有主機訂閱";
-"settings.output_help" = "同時連上 Mac 和 iPhone 時，只會向其中一台輸出。可以手動選擇，或保持自動。手錶看不到系統給出的裝置名稱，會依連線特徵區分，也可以手動標記。";
-"settings.output_mac" = "Mac";
-"settings.output_iphone" = "iPhone";
+"settings.output_help" = "報告只會發給一台主機。列表裡是實際已訂閱的裝置，名稱是裝置 1、裝置 2，以此類推。編號會跟同一條連線保持不變，並不是 Mac 或 iPhone 的標籤，因為手錶無法可靠判斷系統類型。先選一台，再點測試或在觸控板上拖曳，看哪台裝置有反應。已就緒只表示所選主機已訂閱，並不表示你已經看到指標移動。如果已儲存的裝置不在，而目前只連著另一台，會暫時使用那一台，直到你重新選擇或原來的裝置回來。";
 "settings.output_device" = "裝置 %d";
-"settings.mark_mac" = "標為 Mac";
-"settings.mark_iphone" = "標為 iPhone";
+"settings.output_test" = "測試";
+"settings.output_test_sent" = "已向裝置 %d 傳送一次小幅指標移動。請看那台裝置。";
+"settings.output_test_none" = "還沒有選定輸出，或該主機尚未訂閱。";
+"settings.output_saved_away" = "已儲存的裝置目前不在。如果列表裡有兩台以上，請先選一台再繼續。";

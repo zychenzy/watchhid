@@ -24,6 +24,8 @@
 "status.ready_keyboard_ok" = "Ready";
 "status.ready_keyboard_wait" = "No keyboard";
 "status.ready_mouse" = "Ready";
+"status.ready_device" = "Ready · Device %d";
+"status.choose_output" = "Choose output";
 "status.preparing" = "Preparing";
 "status.send_busy" = "Busy";
 "type.keyboard_off" = "Keyboard off";
@@ -37,11 +39,10 @@
 "type.send_busy_stopped" = "Stopped";
 "type.send_complete" = "Sent";
 "settings.output" = "Output";
-"settings.output_auto" = "Automatic (prefer Mac)";
 "settings.output_none" = "No host subscribed yet";
-"settings.output_help" = "When a Mac and iPhone are both connected, reports go to only one. Pick a device, or leave it automatic. The Watch is not given a system device name, so it distinguishes hosts by the connection and remembers your labels.";
-"settings.output_mac" = "Mac";
-"settings.output_iphone" = "iPhone";
+"settings.output_help" = "Reports go to only one host. The list shows actually subscribed devices as Device 1, Device 2, and so on. Those numbers stay with the same connection; they are not a Mac or iPhone label, because the Watch cannot reliably tell the operating system. Select one, then tap Test or drag on the pad and watch that device. Ready means the selected host has subscribed, not that you already saw the pointer move. If the saved device is away and only one other host is connected, that host is used until you pick again or the saved one returns.";
 "settings.output_device" = "Device %d";
-"settings.mark_mac" = "Label as Mac";
-"settings.mark_iphone" = "Label as iPhone";
+"settings.output_test" = "Test";
+"settings.output_test_sent" = "Sent a small pointer move to Device %d. Watch that device.";
+"settings.output_test_none" = "No output is selected, or that host is not subscribed.";
+"settings.output_saved_away" = "The saved device is not connected. If more than one host is listed, pick one to continue.";

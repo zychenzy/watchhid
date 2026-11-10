@@ -11,7 +11,7 @@ This repository is written in English. The Watch app UI follows the Watch system
 | Mac as a direct BLE HOGP mouse | Confirmed on two Macs: same-node identity `WatchHID` / `Ultra2-R1`, plus pointer movement the operator saw. A new Mac needs its own encrypted HOGP bond and a build that accepts any Report subscriber. |
 | Watch dictation | System dictation captures text on the Watch and can type typable English into the focused Mac field when the keyboard HID is on. The Watch does not show the captured text. |
 | English HID keyboard into the Mac | **Off** by default. Do not use the composite mouse+keyboard Report Map on a Mac that already bonded the baseline mouse map (that made movement vertical-only). The Settings toggle adds a separate keyboard service instead. |
-| iPhone system HID / AssistiveTouch / UU remote | Not achieved. |
+| iPhone as a HID host | The operator confirmed Watch control of the iPhone while away from the Mac; not instrumented here. When two hosts are subscribed, pick one Device in Settings and test. “Ready” means a host subscribed, not that the iPhone already moved. |
 
 watchOS marks `CBPeripheralManager` APIs `API_UNAVAILABLE(watchos)`. This project creates the peripheral at runtime and it works on the setups below. That is not a supported stability guarantee for future watchOS.
 
@@ -77,6 +77,8 @@ External chips, Mac accessibility or event-injection helpers as the mouse path, 
 ```bash
 swiftc Shared/MouseInputState.swift scripts/MouseInputStateTests.swift \
   -o /tmp/watchhid-mouse-tests && /tmp/watchhid-mouse-tests
+swiftc Shared/OutputHostRouting.swift scripts/OutputHostRoutingTests.swift \
+  -o /tmp/watchhid-output-host-tests && /tmp/watchhid-output-host-tests
 python3 scripts/test_watchhid_scriptlib.py
 python3 scripts/test_assess_live_read.py
 ```
