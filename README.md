@@ -87,3 +87,7 @@ See [`docs/INDEX.md`](docs/INDEX.md). Raw syslog/screenshot/crash packages stay 
 ## Explicitly out of scope
 
 External chips, Mac accessibility/helper injection as the mouse path, unpairing/BT reset as a “fix”, cloud push of private device logs, or claiming iPhone success.
+
+## Current local candidate
+
+Chinese quick start and honest acceptance limits: [回来后试用](docs/QUICKSTART.zh-CN.md). Recovery evidence and regression matrix: [HOGP recovery](docs/HOGP-RECOVERY.md). Signed current/rollback archives remain local under `build/diagnostics/recovery-root/`; no release or push is implied.
