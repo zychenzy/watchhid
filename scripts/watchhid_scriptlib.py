@@ -72,9 +72,18 @@ def _walk(obj: Any):
             yield from _walk(item)
 
 
-def _ident_of(item: dict) -> str:
+def _idents_of(item: dict) -> list[str]:
+    """All identifier-like values on this dict, not just the first key.
+
+    CoreDevice device objects have a UUID in `identifier` and the hardware
+    UDID in `hardwareProperties.udid`. Those are different. Matching only
+    the first key would skip the device and later hit the nested hardware
+    dict, which has the UDID but no tunnel state.
+    """
     hardware = item.get("hardwareProperties") or {}
     props = item.get("deviceProperties") or item.get("properties") or {}
+    found: list[str] = []
+    seen: set[str] = set()
     for key in (
         item.get("identifier"),
         item.get("udid"),
@@ -85,9 +94,15 @@ def _ident_of(item: dict) -> str:
         props.get("udid"),
         props.get("UDID"),
     ):
-        if key:
-            return str(key).strip()
-    return ""
+        if not key:
+            continue
+        value = str(key).strip()
+        folded = value.lower()
+        if not value or folded in seen:
+            continue
+        seen.add(folded)
+        found.append(value)
+    return found
 
 
 def _same_udid(value: str, expected: str) -> bool:
@@ -102,6 +117,8 @@ def watch_developer_state(data: Any, udid: str) -> str:
 
     If that UDID is absent, return "missing". Never fall back to another
     watchOS device, a name containing "Watch", or the first available Watch.
+    Match any identifier-like field, including hardwareProperties.udid when
+    it differs from the CoreDevice `identifier` UUID.
     """
     wanted = (udid or "").strip()
     if not wanted:
@@ -111,21 +128,27 @@ def watch_developer_state(data: Any, udid: str) -> str:
     for item in _walk(data):
         if not isinstance(item, dict):
             continue
-        ident = _ident_of(item)
-        if not ident or not _same_udid(ident, wanted):
+        idents = _idents_of(item)
+        if not any(_same_udid(ident, wanted) for ident in idents):
             continue
         conn = item.get("connectionProperties") or (item.get("properties") or {}).get("connection") or {}
+        if not isinstance(conn, dict):
+            conn = {}
         state = (
             item.get("state")
             or conn.get("tunnelState")
             or conn.get("state")
             or item.get("connectionState")
         )
-        match = {
+        candidate = {
             "state": state,
             "tunnel": conn.get("tunnelState") or conn.get("state"),
         }
-        break
+        if candidate["tunnel"] or candidate["state"]:
+            match = candidate
+            break
+        if match is None:
+            match = candidate
     if match is None:
         return "missing"
     return str(match.get("tunnel") or match.get("state") or "unknown")
