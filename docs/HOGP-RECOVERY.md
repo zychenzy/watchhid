@@ -35,3 +35,6 @@ The bottom orange microphone action is explicitly labeled语音听写. It retain
 
 ## Remaining initialization failure
 After the final wording-only reinstall, native BTLEServer again reported ATT242 and timed out without recreating the mouse. No HID recipe had changed. One unchanged remote restart did not recover it. Static immutable metadata is a useful accepted repair, not a complete solution for every foreground/launch timing. Exact remaining failing dynamic attribute is not isolated. At09:07 HKT Watch and iPhone were unavailable after the user left home, so no further hardware attempts were made. The last installed19e2b13 is installed but needs a fresh manual foreground-open/short-drag acceptance; the packaged successor changes only simulator-only checks and documentation on device.
+
+## Simulator actual system-entry completion
+Official watchOS XCUITest now verifies actual keyboard input watch test -> systemDone -> real String callback -> exact preview ->完成 -> main panel; separate Cancel path also passes. This improves UI/completion coverage only; real speech ASR and physical BLE are not inferred. Full evidence and reproduction are in SIMULATOR-CHECKS.md.
