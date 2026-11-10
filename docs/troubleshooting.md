@@ -1,47 +1,31 @@
 # Troubleshooting
 
-Do not reset system Bluetooth, unpair the system Apple Watch, clear Bluetooth caches, or turn off security settings to “fix” a problem. If this Mac just completed an HOGP pairing, leave that bond alone.
+Try the matching row first. Do not reset system Bluetooth or unpair the system Apple Watch to “fix” WatchHID.
 
-Do not print UDIDs, Bluetooth addresses, or provisioning device lists in chat or git.
-
-| What you see | How to read it | What not to do |
+| Symptom | Likely meaning | What to do |
 |---|---|---|
-| Status is Ready, two devices are listed, but the iPhone or this Mac does not move | Ready means a host has subscribed, not that the device you are watching already received input. Reports go to only one selected Device N. Open Settings, pick the other device, tap Test or drag, and watch that machine. The app no longer labels hosts as Mac or iPhone. | Do not reset Bluetooth. Do not assume the missing movement means the bond is gone. |
-| Pointer does not move, but Bluetooth or Device Hub shows the Watch as connected | Open WatchHID in the foreground and check the status text. Confirm a passkey dialog if one is showing. A connected HID BLE entry, or a confirmed prompt, is not success by itself. If status stays on `等待 Mac 系统订阅`, install a build at `dc02abf` or later: older builds required one hardcoded Mac central. | Do not unpair the Watch or reset Bluetooth. |
-| Status stays on `等待 Mac 系统订阅` after this Mac subscribed | On builds before `dc02abf`, the input gate ignored any central that was not a hardcoded identifier from the original development Mac. Current source accepts any Report CCCD subscriber. | Do not reset the bond. Rebuild and install from current source on this Mac. |
-| `verify-hogp-mouse.sh` prints `NODE_OK` but you are unsure about the pointer | The script only checks same-node identity (`WatchHID` / `Ultra2-R1` plus mouse/pointer usage). Movement is a separate human check. | Do not treat `NODE_OK` as a cursor-movement pass. |
-| The HID node is `Apple Inc.` / `Watch7,5` (the system Apple Watch) and the pointer does not move | This was seen on a new Mac with an older encrypted package, before the input-gate fix was installed. After installing a current package, the same Mac showed `WatchHID` / `Ultra2-R1` and the pointer moved. If a current package still shows only the system identity, keep the bond and investigate Device Information / PnP separately. | Do not reset Bluetooth to force a new identity. |
-| Mac is locked | Probe failures on a locked Mac are not evidence that the app is broken. Unlock, then test the pointer. | Do not bypass the lock or change security settings for a test. |
-| `devicectl` shows the Watch as `connected`, but install fails with “Failed to allocate RSD device” (CoreDevice -1 / mobiledevice -402653181) | The list state is not a sufficient gate. Probe details and DDI, or run `./scripts/install-signed-watch-app.sh --check-ready`, and only then install. On 2026-11-10 the same signed package installed after those probes succeeded. Signing was not the cause. | Do not reset Bluetooth. Do not revoke or replace certificates. Do not keep retrying install in a tight loop. |
-| macOS shows Keyboard Setup Assistant (“new keyboard”) | Close it. WatchHID does not need keyboard-type identification completed. The window itself is unchanged: there is still no official way documented here to guarantee it will not appear. Apple’s Mac User Guide says the assistant opens so you can specify ANSI, ISO, or JIS. Completing it (Continue, then a key) does not change WatchHID firmware, but it can write a host keyboard-type setting and is untested on the current separate keyboard service. The old vertical-only pointer bug was caused by a composite Report Map change, not by closing this assistant. On the the development Mac, reopening the assistant on 2026-11-10 showed a Logitech device, not WatchHID; see the mini KSA baseline evidence. If you already pressed Continue or a key on another keyboard, check pointer, click, and dictation; report the actual symptom. | Do not use an unrelated physical keyboard to identify WatchHID. Do not assume damage, reset Bluetooth, or unpair to undo a Continue/key press. Do not disable or move the system assistant, edit `/Library` keyboard-type preferences, or change the working mouse HID identity or Report Map. |
-| `devicectl` shows `unavailable` or only `available (paired)` | The developer tunnel is down. Wake and unlock the Watch, unlock the paired iPhone, join the same Wi-Fi if you can, and wait for `connected`. A USB cable is not required. | Do not reset Bluetooth to “open” the developer connection. Do not treat Bluetooth-connected as install-ready. |
-| Install script says the Watch is `unknown` even though the device list shows `connected` | An older matcher used only the first identifier field. CoreDevice puts a UUID in `identifier` and the Watch UDID in `hardwareProperties.udid`. Current `watch_developer_state` matches either. | Do not install onto a different Watch. Do not reset Bluetooth. |
-| Signed install is rejected | The development profile may have expired, or this Watch is not in the profile. Re-sign on this Mac as in [setup.md](setup.md). Free profiles usually last about seven days. | Do not copy private keys or login tokens from another Mac. |
-| `find-identity -v` is empty, but Xcode shows a certificate in the keychain | Often a missing WWDR G3 intermediate, not a missing private key. Run `./scripts/check-signing-prereqs.sh --install-wwdr`. | Do not click **+** yet. Do not revoke another Mac’s certificate. Do not delete this Mac’s certificate before checking trust. |
-| Xcode **+** says a current Development certificate or pending request already exists | A certificate is already present. Check WWDR G3 and trust first. | Do not revoke another machine’s certificate to make room. |
-| No pairing prompt, and Manufacturer is only “Apple Inc.” with no project PnP | WatchHID is often not in the foreground, so the host reads system Apple Watch Device Information. Automatic pairing may abort in tens of milliseconds with SMP reason 8, before a dialog can appear. Open WatchHID, keep the screen on, and wait for a prompt if this is the first bond on this Mac. | Do not assume the system never requested pairing. Do not reset Bluetooth. |
-| Pointer worked, then stopped after reinstall or after the app went inactive | ATT status 242 can still appear during some launches, and the host may not recreate the mouse node yet. Exit and reopen WatchHID. Keep local logs under `build/diagnostics/`. | Do not unpair, clear caches, or treat a simulator pass as a device recovery. |
+| Pointer does not move, but the Watch shows Ready | Ready only means the selected host subscribed | Pick the intended Device in Settings, tap Test or drag, and watch that machine. Confirm a pairing prompt if macOS shows one. Then use `./scripts/verify-hogp-mouse.sh` plus movement you see yourself. |
+| `verify-hogp-mouse.sh` reports `NODE_OK` but you still see no movement | Identity is not a motion test | Watch the desktop while you drag. Another host may be the selected output. |
+| Pointer only moves up and down after enabling the keyboard | A composite mouse+keyboard Report Map was used on a host that already bonded the baseline 4-byte mouse map | Turn English keyboard HID off and restore the baseline mouse map. Do not use a composite Report Map on that bond. The current app keeps the keyboard on a separate service. |
+| Keyboard Setup Assistant appears | macOS saw a new keyboard HID | Close the assistant. Do not complete identification, and do not use another keyboard to identify WatchHID. There is no official way to guarantee it will not appear. |
+| The system input sheet opens a keyboard or Scribble instead of recording | The system chose the initial input method | Switch to the microphone in that system sheet, then dictate and tap Done. This is expected; the public API does not force dictation-first. |
+| Dictation finishes but nothing is typed on the Mac | Keyboard HID may be off, the Mac field may not be focused, or the result was empty, cancelled, or non-ASCII | Turn English keyboard HID on, focus a typable field, and accept typable English with the system Done control. An empty or cancelled sheet does not type. |
+| Install fails with “Failed to allocate RSD device” or a CoreDevice / RemotePairing tunnel timeout | A `connected` list entry is not a sufficient install gate | Keep the Watch close, awake, unlocked, and screen-on. Run `./scripts/install-signed-watch-app.sh` only (it has its own readiness probe). Optional standalone diagnosis: `./scripts/install-signed-watch-app.sh --check-ready` when you are **not** about to install. Do not run `--check-ready` and install back-to-back. Do not retry in a tight loop. Do not revoke certificates. |
+| Install cannot find this Watch | The script matches only the `WATCH_UDID` in `Config/local_devices.env` | Confirm you filled the gitignored env file for this Watch. Do not guess another device from a list. |
+| A new Mac never gets a mouse node | Encrypted HOGP bonds are not transferable | Create a new bond on this Mac. Do not copy Bluetooth preferences or keychain items from another Mac. |
+| Input stops after the Watch sleeps or shows the clock | The app must be in the foreground with the screen on | Open WatchHID again and start a new gesture. Background input is not supported. |
+| The Watch app disappears after you uninstall an iPhone WatchHID app | An older iOS product may still embed the same Watch bundle as a companion app. Removing that iPhone app can take the Watch app with it. The current watch-only package does not require a companion iPhone app. | Install the current watch-only Watch app directly. It is marked watch-only, has no companion bundle identifier, and has been confirmed to run with no iPhone WatchHID app installed. Do not treat a leftover embedded-Watch iOS product as the current packaging. |
 
-## Signing preflight
+## Commands
 
 ```bash
 ./scripts/check-signing-prereqs.sh
-```
-
-If it reports a trust failure, install the official intermediate and check again:
-
-```bash
-./scripts/check-signing-prereqs.sh --install-wwdr
-```
-
-Confirm the keychain password or Allow prompt. That writes Apple’s WWDR G3 intermediate; it does not create a Development certificate.
-
-## Install and verify
-
-```bash
-./scripts/install-signed-watch-app.sh --check-ready
 ./scripts/install-signed-watch-app.sh
 ./scripts/verify-hogp-mouse.sh
 ```
 
-Historical recovery notes and earlier experiment logs live under [research/](research/).
+`--check-ready` is only for a probe without installing:
+
+```bash
+./scripts/install-signed-watch-app.sh --check-ready
+```

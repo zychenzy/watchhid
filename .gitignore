@@ -43,3 +43,6 @@ crashlog-*.ips
 *.heic
 *.mov
 *.mp4
+
+# keep official app icons in the repo even though other images are local-only
+!Apps/**/AppIcon.appiconset/*.png

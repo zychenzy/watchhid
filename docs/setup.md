@@ -1,170 +1,90 @@
-# Set up WatchHID on a new Mac
+# Setup
 
-This is the reusable path for any Mac and any compatible Apple Watch. After you copy the project onto this Mac, build and sign here. Do not copy private keys, Bluetooth settings, or an HOGP bond from another Mac.
+This is the public install path for WatchHID on a Mac you control. It does not reset Bluetooth bonds, and it does not copy an encrypted HOGP bond from another Mac.
 
-An encrypted HOGP bond exists only between this Watch and this Mac’s Bluetooth controller. The steps are reusable; the keys are not.
+Do not print or commit device UDIDs, Bluetooth addresses, provisioning device lists, certificate serials, or Apple ID emails. Put local identifiers only in the gitignored files copied from the templates below.
 
-Do not print or commit device UDIDs, Bluetooth addresses, provisioning device lists, certificate serials, or Apple ID emails. Put local identifiers only in the gitignored files named below. Type passwords and verification codes only in official system or Apple dialogs, never into chat or a log.
+## 1. Prerequisites
 
-## Two different connections
+- Full Xcode, not only Command Line Tools
+- Developer Mode enabled on the Apple Watch
+- The iPhone paired with that Watch (a watchOS requirement; WatchHID itself is watch-only and has no companion iPhone app)
+- An Apple Developer account for signing
 
-| Connection | What it is for | Ready when |
-|---|---|---|
-| CoreDevice developer tunnel (`devicectl`) | Install or launch the Watch app | `xcrun devicectl list devices` shows this Watch as `connected` |
-| Bluetooth LE HOGP | The Watch acting as a system mouse | WatchHID is in the foreground, and this Mac has an encrypted HID bond with it |
+The macOS login account and the Apple ID used for signing may be different. Do not change the Mac login just to sign.
 
-A Bluetooth-connected Apple Watch, including one labeled HID BLE, is not enough to install the app. A connected developer tunnel is not enough to prove the pointer works.
+## 2. Local configuration
 
-## 1. Install Xcode
-
-Check this Mac’s system version with `sw_vers`, then install a full Xcode that [Apple’s SDK table](https://developer.apple.com/xcode/system-requirements/) supports. Command Line Tools alone are not enough: `xcrun devicectl` may only tell you to install Xcode.
-
-Install from the Mac App Store or from [Apple Developer downloads](https://developer.apple.com/download/all/?q=Xcode). You can stay signed into the App Store with the everyday Apple ID. Then:
-
-```bash
-sudo xcode-select -s /Applications/Xcode.app
-sudo xcodebuild -runFirstLaunch
-xcodebuild -version
-xcrun devicectl list devices
-```
-
-**You confirm:** the administrator password and any first-launch license dialogs.
-
-## 2. Add the signing Apple ID in Xcode
-
-The macOS / iCloud login on this Mac may be different from the Apple ID used to sign the app. Do not sign out of macOS or switch iCloud just to develop.
-
-1. Keep the current macOS login unchanged.
-2. Open **Xcode > Settings > Accounts** and add the project’s developer Apple ID (a free personal team is enough).
-3. Complete sign-in and two-factor authentication in the official dialogs.
-
-**You confirm:** Apple ID password, two-factor code, and any account permission prompts.
-
-## 3. Create a local Apple Development certificate, only if needed
-
-A signing identity is the certificate **plus** the private key in this Mac’s login keychain. The private key must be generated here. Do not import a private key from another Mac, and do not revoke another machine’s certificate to make room.
-
-First copy the local config and run the preflight. It tells you whether you still need to click **+**.
+From the repository root:
 
 ```bash
 cp Config/Developer.xcconfig.example Config/Developer.xcconfig
-# Set DEVELOPMENT_TEAM to the team ID shown in Xcode > Settings > Accounts.
 cp Config/local_devices.env.example Config/local_devices.env
-# Set WATCH_UDID to this Watch. Do not commit either file.
-brew install xcodegen    # if needed
+```
+
+Fill `DEVELOPMENT_TEAM` in the xcconfig and `WATCH_UDID` in the env file. Those two files are gitignored.
+
+## 3. Signing preflight
+
+```bash
 ./scripts/check-signing-prereqs.sh
 ```
 
-Interpret the result this way:
-
-- If the script says the identity is OK, do not click **+** in Manage Certificates.
-- If it says an identity is present but not trusted, install WWDR G3 (next section). Do not click **+**, and do not delete the certificate.
-- If it says there is no identity on this Mac, open **Xcode > Settings > Accounts**, select that Apple ID and the same team, open **Manage Certificates…**, and use **+** to add **Apple Development**.
-
-If **+** says “You already have a current Development certificate or a pending certificate request,” stop. That usually means a certificate already exists and the problem is trust or a missing intermediate, not a missing certificate. Do not revoke another Mac’s certificate.
-
-**You confirm:** any Keychain access or Apple ID dialog while creating a certificate.
-
-## 4. Install WWDR G3 when trust fails
-
-Apple Development certificates are issued by the WWDR G3 intermediate. If this Mac only has an older, expired WWDR with the same common name, `security find-identity -v -p codesigning` stays empty even though Xcode shows the certificate in the keychain (a blank status, not “Not in Keychain”).
+If the script reports a missing WWDR G3 intermediate:
 
 ```bash
 ./scripts/check-signing-prereqs.sh --install-wwdr
-./scripts/check-signing-prereqs.sh
 ```
 
-The first command downloads [AppleWWDRCAG3.cer](https://www.apple.com/certificateauthority/AppleWWDRCAG3.cer) and installs it into the login keychain only.
+Confirm the login keychain prompt if macOS shows one. That installs Apple’s official intermediate; it does not create a new Development certificate.
 
-**You confirm:** the login keychain password or Allow prompt. That authorizes writing Apple’s official intermediate. It is **not** creating a new Apple Development certificate. Do not set trust to Always Trust.
+Only use Xcode **Manage Certificates… > +** when preflight says there is no signing identity on this Mac. If **+** says a current Development certificate already exists, stop and fix trust. Do not revoke a certificate that another Mac still uses.
 
-This was confirmed on 2026-11-10 at 15:36 Asia/Shanghai: after that dialog, the identity became valid and a local signed package built successfully.
-
-## 5. Enable Developer Mode and trust this Mac
-
-1. On the Watch: **Settings > Privacy & Security > Developer Mode**, then restart when asked.
-2. Bring the Watch close, wake it, and unlock it.
-3. If the Watch or its paired iPhone asks to trust this computer, confirm it on the device.
-4. Check that `xcrun devicectl list devices` can see this Watch.
-
-**You confirm:** Developer Mode, the restart, and Trust This Computer.
-
-Do not unpair the Watch or reset system Bluetooth to make the device appear.
-
-## 6. Build the encrypted package
+## 4. Build a signed Watch app
 
 ```bash
 ./scripts/ship-encrypted-hogp.sh
 ```
 
-This builds the `standard128-encrypted` recipe (encrypted reads for the Report Map and input Report, plus encrypted notifications for the input Report) and writes `build/diagnostics/recovery-root/WatchHID-encrypted-hogp.zip`. That directory is gitignored.
+This produces a signed zip under `build/diagnostics/recovery-root/`. It does not install the app.
 
-`xcodebuild` may refresh the development provisioning profile for this Apple ID. The profile must still include this Watch. Use `python3 scripts/watchhid_scriptlib.py provision-info ./WatchHIDWatchApp.app` to check expiry and whether the configured Watch is included. Do not paste `security cms -D` output into chat or git.
+Confirm any codesign keychain prompt yourself.
 
-**You confirm:** any Keychain access or codesign prompt on the first build.
+## 5. Install
 
-A still-valid pre-signed zip can be installed without a local certificate, but that is not the default path once the project is on this Mac. Free profiles usually last about seven days; re-sign here with the same Apple ID.
+The developer tunnel is not the same thing as a Bluetooth-connected Apple Watch. A `connected` entry in `devicectl list devices` is not sufficient by itself.
 
-## 7. Install onto the Watch
-
-The product Watch app is watch-only (`WKWatchOnly`): it has no iOS companion and is not embedded in the optional iOS diagnostic target. Install the `WatchHIDWatchApp` scheme or `./scripts/install-signed-watch-app.sh`. A paired iPhone may still be needed for the developer tunnel or system Watch services; that is not the same as installing a companion app. Watch Connectivity log export to the iOS tool is not available.
-
-The install script waits for a `connected` developer tunnel and matches only the UDID in `Config/local_devices.env`. It will not install onto a different Watch. A `connected` list entry is not sufficient by itself: after the tunnel is listed, the script also probes CoreDevice details and DDI services. On 2026-11-10, two installs on a home Mac failed with “Failed to allocate RSD device” after the list said `connected`; the same package installed once those probes succeeded. Signing was not changed. See [evidence/home-mini-neutral-picker-2026-11-10.md](evidence/home-mini-neutral-picker-2026-11-10.md).
+When you are ready to install, run **only**:
 
 ```bash
-./scripts/install-signed-watch-app.sh --check-ready   # probe only; does not install
 ./scripts/install-signed-watch-app.sh
 ```
 
-If the tunnel is not `connected`, or the details/DDI probe is not ready, the script prints what to do and exits. Typically:
+You may pass the signed zip path as an argument. The script already probes CoreDevice details and DDI services after the list state is `connected`. That is the single readiness gate.
 
-1. Bring the Watch close, wake and unlock it, and keep the screen on.
-2. Bring the paired iPhone close, unlock it, and join the same Wi-Fi if you can. A USB cable is not required.
-3. Run `--check-ready`, then the installer, when those checks pass. Do not treat a stale `connected` list line as install-ready.
+Do **not** run `./scripts/install-signed-watch-app.sh --check-ready` immediately before an install. `--check-ready` is a standalone diagnostic probe for when you are not installing.
 
-A wireless install has succeeded with the iPhone nearby, unlocked, and on the same Wi-Fi, with no USB cable. That does not mean the iPhone is always required, and it does not prove install still works when no iPhone is nearby.
+Keep the Watch close, awake, unlocked, and screen-on. A nearby unlocked iPhone on the same network can help the developer tunnel; that does not mean a companion app is required.
 
-If `devicectl` shows `connected` but an older script reported the Watch state as `unknown`, update to a revision that matches `hardwareProperties.udid` as well as the CoreDevice `identifier`. Those two values are different.
+If install fails with “Failed to allocate RSD device”, CoreDevice 4000, or RemotePairing 1001, wait, confirm the Watch is still unlocked and screen-on, and run the same installer once more. Do not loop, do not reset Bluetooth, and do not change certificates.
 
-**You confirm:** any Trust or install prompt on the Watch, and keeping the Watch and iPhone awake while the tunnel comes up.
+## 6. First use
 
-## 8. Pair HOGP on this Mac
-
-1. Unlock the Mac and move the pointer to a safe blank desktop.
-2. Open WatchHID on the Watch and leave it in the foreground with the screen on. You should see status text. If the app is on the lock screen or in the background, the Mac often reads the system Apple Watch Device Information instead of WatchHID.
-3. If macOS shows a Bluetooth passkey or pairing confirmation, complete it in the system dialog. That is part of setup. It is not unpairing the system Apple Watch, and it does not require a Bluetooth reset.
-4. Short-drag on the pad, then light-tap.
-
-Current source (`dc02abf` and later) arms the pad and sends mouse reports when at least one Report CCCD subscriber is present. Older packages required one hardcoded Mac central and could stay on `等待 Mac 系统订阅` (“waiting for the Mac system to subscribe”) even after this Mac had subscribed. Install a current package before judging a new Mac.
-
-Then run:
+Open WatchHID on the Watch. If macOS shows a Bluetooth pairing prompt, confirm it in the system dialog. Short-drag on the pad, then:
 
 ```bash
 ./scripts/verify-hogp-mouse.sh
 ```
 
-Success is both of these:
+`NODE_OK` means this Mac sees the WatchHID mouse node (`WatchHID` / `Ultra2-R1`, mouse/pointer usage). It is not proof that the pointer moved. Success is that node plus movement you see yourself.
 
-1. `NODE_OK`: one IOHID node has Manufacturer `WatchHID`, ModelNumber `Ultra2-R1`, and Generic Desktop mouse/pointer usage.
-2. You see the pointer move.
+A new Mac needs its own encrypted HOGP bond. System Apple Watch pairing and iCloud do not copy that bond from another Mac.
 
-A Bluetooth-connected Watch, a confirmed pairing prompt, or a connected developer tunnel is not enough. Do not reset the bond you just made.
+## Dialogs you have to confirm
 
-On 2026-11-10, a second Mac completed pairing and encryption, then after the gate-fixed local package was installed, the operator confirmed pointer movement and `verify-hogp-mouse.sh` reported `NODE_OK`. Reconnect reliability and wireless iPhone isolation are still not fully proven. Details: [evidence/new-mac-hogp-2026-11-10.md](evidence/new-mac-hogp-2026-11-10.md).
-
-## Human prompts the scripts cannot click for you
-
-| When | What you see | What to do |
-|---|---|---|
-| `xcode-select` / first launch | Administrator password or license | Confirm in the system dialog |
-| Xcode Accounts | Apple ID password and two-factor code | Enter them only in that official window |
-| Manage Certificates, and only if preflight says there is no identity | Create an Apple Development certificate | Use **+**. If it says a current certificate already exists, stop |
-| `check-signing-prereqs.sh --install-wwdr` | Login keychain password or Allow | Confirm. This writes WWDR G3, and does not create a Development certificate |
-| First `ship-encrypted-hogp.sh` | Keychain access / codesign | Confirm in the official dialog |
-| Watch / iPhone | Developer Mode, restart, Trust This Computer | Confirm on the device |
-| Install while the tunnel is down, or after a connected list entry if RSD/DDI is not ready | No dialog; the script explains the steps | Wake and unlock the Watch, unlock the iPhone, same Wi-Fi, then `--check-ready` before installing |
-| First HOGP use on this Mac | Bluetooth passkey or pairing confirmation | Confirm in the macOS system dialog. Do not reset Bluetooth |
-
-## After setup
-
-How to use the pad and dictation: [usage.md](usage.md). If something fails: [troubleshooting.md](troubleshooting.md).
+| Situation | What you should do |
+|---|---|
+| Keychain or codesign prompt | Confirm in the official dialog. Do not paste passwords into chat. |
+| WWDR G3 install | Confirm the keychain prompt after `--install-wwdr`. |
+| Bluetooth pairing / passkey | Confirm in the macOS system dialog while WatchHID is in the foreground. |
+| Keyboard Setup Assistant | Close it. WatchHID does not need identification completed. Do not use another keyboard to identify it. |

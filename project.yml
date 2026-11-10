@@ -2,7 +2,6 @@ name: WatchHID
 options:
   bundleIdPrefix: com.zy.watchhid
   deploymentTarget:
-    iOS: "17.0"
     watchOS: "10.0"
   createIntermediateGroups: true
   groupSortPosition: top
@@ -18,30 +17,6 @@ settings:
     MARKETING_VERSION: "0.1.0"
 
 targets:
-  WatchHID:
-    type: application
-    platform: iOS
-    sources:
-      - path: Apps/iOS
-      - path: Shared
-    # Optional diagnostic tool only. Not a Watch companion; do not embed the Watch app.
-    configFiles:
-      Debug: Config/Developer.xcconfig
-      Release: Config/Developer.xcconfig
-    settings:
-      base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.zy.watchhid
-        GENERATE_INFOPLIST_FILE: YES
-        INFOPLIST_FILE: Apps/iOS/Info.plist
-        TARGETED_DEVICE_FAMILY: "1"
-        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
-        INFOPLIST_KEY_UILaunchScreen_Generation: YES
-        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: UIInterfaceOrientationPortrait
-        INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription: "WatchHID scans for the Watch Mouse BLE advertisement during R1 tests."
-        INFOPLIST_KEY_NSBluetoothPeripheralUsageDescription: "WatchHID uses Bluetooth to verify Watch Mouse advertising."
-        CODE_SIGN_ENTITLEMENTS: Apps/iOS/WatchHID.entitlements
-        SUPPORTS_MACCATALYST: NO
-
   WatchHIDWatchApp:
     type: application
     platform: watchOS
@@ -78,10 +53,6 @@ targets:
         TEST_TARGET_NAME: WatchHIDWatchApp
 
 schemes:
-  WatchHID:
-    build:
-      targets:
-        WatchHID: all
   WatchHIDWatchApp:
     build:
       targets:

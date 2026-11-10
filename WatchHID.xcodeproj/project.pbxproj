@@ -7,31 +7,19 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		03A04A1E03CECAE1C8713578 /* WatchLogInbox.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E1042AAC9182ECFD3F5FC11 /* WatchLogInbox.swift */; };
 		0FF3D0BC11085B11A7FB88AD /* SystemTextEntryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3B2AC9155A7AA6DBDFA6A10 /* SystemTextEntryTests.swift */; };
 		1793EFF2CF55D6BF98D1B922 /* LogStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = D391F124F26978C6EA9CE92E /* LogStore.swift */; };
 		2355E9E5FBB46F0FFC8DCBD9 /* L10n.swift in Sources */ = {isa = PBXBuildFile; fileRef = C44047FF9E6E85E97582F662 /* L10n.swift */; };
 		301B0E7434CE00BC7E7D06C7 /* HIDMetadata.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1E0A87921C8F36732951D39 /* HIDMetadata.swift */; };
 		333C796AA07FD6CFEB629E96 /* OutputHostRouting.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7BFFBF3EFF770714894D75D /* OutputHostRouting.swift */; };
-		3955D5CF2320D18CA0C38B62 /* HIDDescriptors.swift in Sources */ = {isa = PBXBuildFile; fileRef = F57B97A047F9857D9E240285 /* HIDDescriptors.swift */; };
-		3DFA40E4337FD0076A1927C6 /* ChecklistView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D902E4B19FE4FDDEEAC50856 /* ChecklistView.swift */; };
-		4B08FA18222C37AA58EBF0DA /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 05B5D0BB50EDC1EE8902F855 /* Assets.xcassets */; };
-		51AAC040450AF10BCDF5E8B2 /* MouseInputState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04D84C02614867018A14428D /* MouseInputState.swift */; };
-		7C86C1BF3FE469311A5EE68F /* KeyboardInputState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 047E8037B023988114B6014B /* KeyboardInputState.swift */; };
 		84B97F4F6F55B1FAE7C43F70 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 9E65FE9002DE5DD83C68D2C3 /* Assets.xcassets */; };
-		8B3737AA07380EBE4D1A41F4 /* WatchHIDApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3252ADA39FC701DE6675A667 /* WatchHIDApp.swift */; };
-		8D1F7C49B3D65EAC282FC85C /* LogEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDBD31517FD5FE527FAB7FB6 /* LogEntry.swift */; };
 		91B26999AEA84E349759C8F6 /* KeyboardInputState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 047E8037B023988114B6014B /* KeyboardInputState.swift */; };
 		92AD50746422E3C84CC1AD5B /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 7D00022EBEC4BFDB86A7745A /* Localizable.strings */; };
 		9DD3AC587E4E530C32127FC3 /* PeripheralProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C6C61FC4163BFA17B9A8418 /* PeripheralProbe.swift */; };
-		A25590A8B58294F64719391B /* BLEScanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5A0067C1EC1DF9909F9B731 /* BLEScanner.swift */; };
 		ACB011887E8053A42457B5C6 /* WatchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13B069EDE22D71C7F8BFD107 /* WatchApp.swift */; };
 		B310CE42CF005BB93C690C8D /* RuntimeEnumerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 355CD0CB069653CDE1059908 /* RuntimeEnumerator.swift */; };
-		B495B42D676F0A605F040F7D /* OutputHostRouting.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7BFFBF3EFF770714894D75D /* OutputHostRouting.swift */; };
 		BC0E392174518CBEF23FEBF6 /* MouseInputState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04D84C02614867018A14428D /* MouseInputState.swift */; };
-		D5DA74C18821C6B44503A39E /* HIDMetadata.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1E0A87921C8F36732951D39 /* HIDMetadata.swift */; };
 		E8BDAEE5F762C438837BA3A9 /* HIDDescriptors.swift in Sources */ = {isa = PBXBuildFile; fileRef = F57B97A047F9857D9E240285 /* HIDDescriptors.swift */; };
-		EAFAFCA4E0106C400FA8C904 /* ScannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 763F53C18474CBF220471587 /* ScannerView.swift */; };
 		EFD93EDDE452DD05AB357901 /* LogEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDBD31517FD5FE527FAB7FB6 /* LogEntry.swift */; };
 		F7FAE9C69183DBD46C54AB04 /* PeripheralManagerFactory.m in Sources */ = {isa = PBXBuildFile; fileRef = 4C1DCF1556640520CD7CD175 /* PeripheralManagerFactory.m */; };
 /* End PBXBuildFile section */
@@ -49,24 +37,17 @@
 /* Begin PBXFileReference section */
 		047E8037B023988114B6014B /* KeyboardInputState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardInputState.swift; sourceTree = "<group>"; };
 		04D84C02614867018A14428D /* MouseInputState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MouseInputState.swift; sourceTree = "<group>"; };
-		05B5D0BB50EDC1EE8902F855 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-		0F35DD9D8B1B5F2559F51BCC /* WatchHID.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = WatchHID.entitlements; sourceTree = "<group>"; };
 		13B069EDE22D71C7F8BFD107 /* WatchApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchApp.swift; sourceTree = "<group>"; };
 		17522589C493364D0A62D1AF /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
 		178D3FFCBF79E07DB3496528 /* WatchHIDWatch-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "WatchHIDWatch-Bridging-Header.h"; sourceTree = "<group>"; };
 		28B0C8B51971B141F86A6CDE /* zh-Hant */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hant"; path = "zh-Hant.lproj/Localizable.strings"; sourceTree = "<group>"; };
 		2C6C61FC4163BFA17B9A8418 /* PeripheralProbe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PeripheralProbe.swift; sourceTree = "<group>"; };
-		3252ADA39FC701DE6675A667 /* WatchHIDApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchHIDApp.swift; sourceTree = "<group>"; };
 		355CD0CB069653CDE1059908 /* RuntimeEnumerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RuntimeEnumerator.swift; sourceTree = "<group>"; };
 		4C1DCF1556640520CD7CD175 /* PeripheralManagerFactory.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = PeripheralManagerFactory.m; sourceTree = "<group>"; };
 		6CB498AC8774EB486925F419 /* WatchHIDWatch.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = WatchHIDWatch.entitlements; sourceTree = "<group>"; };
-		6D6A9DAF0EEE8BBA8DD0E64A /* WatchHID.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = WatchHID.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		6E1042AAC9182ECFD3F5FC11 /* WatchLogInbox.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchLogInbox.swift; sourceTree = "<group>"; };
-		763F53C18474CBF220471587 /* ScannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScannerView.swift; sourceTree = "<group>"; };
 		8B00F6965BE0AD88A4CB6D20 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		9E65FE9002DE5DD83C68D2C3 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		9E9BEC3135FA4D3603247DE4 /* PeripheralManagerFactory.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PeripheralManagerFactory.h; sourceTree = "<group>"; };
-		AB1DC3443ED5190421DD8574 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		BD38BF2FB4A32DEE1F1BA0DA /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/Localizable.strings"; sourceTree = "<group>"; };
 		C1E0A87921C8F36732951D39 /* HIDMetadata.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HIDMetadata.swift; sourceTree = "<group>"; };
 		C44047FF9E6E85E97582F662 /* L10n.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = L10n.swift; sourceTree = "<group>"; };
@@ -74,11 +55,9 @@
 		D0E78A02616F6075C457B27A /* WatchHIDUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = WatchHIDUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		D391F124F26978C6EA9CE92E /* LogStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogStore.swift; sourceTree = "<group>"; };
 		D3B2AC9155A7AA6DBDFA6A10 /* SystemTextEntryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemTextEntryTests.swift; sourceTree = "<group>"; };
-		D902E4B19FE4FDDEEAC50856 /* ChecklistView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChecklistView.swift; sourceTree = "<group>"; };
 		DDBD31517FD5FE527FAB7FB6 /* LogEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogEntry.swift; sourceTree = "<group>"; };
 		F13A56123FA0BE1B32063217 /* WatchHIDWatchApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = WatchHIDWatchApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		F57B97A047F9857D9E240285 /* HIDDescriptors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HIDDescriptors.swift; sourceTree = "<group>"; };
-		F5A0067C1EC1DF9909F9B731 /* BLEScanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BLEScanner.swift; sourceTree = "<group>"; };
 		F7BFFBF3EFF770714894D75D /* OutputHostRouting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OutputHostRouting.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -110,21 +89,6 @@
 			);
 			sourceTree = "<group>";
 		};
-		6091F90A91F155DE0D4A94E6 /* iOS */ = {
-			isa = PBXGroup;
-			children = (
-				05B5D0BB50EDC1EE8902F855 /* Assets.xcassets */,
-				F5A0067C1EC1DF9909F9B731 /* BLEScanner.swift */,
-				D902E4B19FE4FDDEEAC50856 /* ChecklistView.swift */,
-				AB1DC3443ED5190421DD8574 /* Info.plist */,
-				763F53C18474CBF220471587 /* ScannerView.swift */,
-				0F35DD9D8B1B5F2559F51BCC /* WatchHID.entitlements */,
-				3252ADA39FC701DE6675A667 /* WatchHIDApp.swift */,
-				6E1042AAC9182ECFD3F5FC11 /* WatchLogInbox.swift */,
-			);
-			path = iOS;
-			sourceTree = "<group>";
-		};
 		9862D4DC793DD248B5149979 /* Watch */ = {
 			isa = PBXGroup;
 			children = (
@@ -147,7 +111,6 @@
 		9CE2E0505E6E7FC137DA79BA /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				6D6A9DAF0EEE8BBA8DD0E64A /* WatchHID.app */,
 				D0E78A02616F6075C457B27A /* WatchHIDUITests.xctest */,
 				F13A56123FA0BE1B32063217 /* WatchHIDWatchApp.app */,
 			);
@@ -157,7 +120,6 @@
 		D18844D910FE3F5A4ACA892F /* Apps */ = {
 			isa = PBXGroup;
 			children = (
-				6091F90A91F155DE0D4A94E6 /* iOS */,
 				9862D4DC793DD248B5149979 /* Watch */,
 			);
 			path = Apps;
@@ -205,24 +167,6 @@
 			productReference = D0E78A02616F6075C457B27A /* WatchHIDUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
-		5BBF9351F2683F19C8B964D1 /* WatchHID */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = B9846A28114D731A17F915C6 /* Build configuration list for PBXNativeTarget "WatchHID" */;
-			buildPhases = (
-				84929424B9D4C55EB178891C /* Sources */,
-				1279EBB66413FE7653ED8225 /* Resources */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-			);
-			name = WatchHID;
-			packageProductDependencies = (
-			);
-			productName = WatchHID;
-			productReference = 6D6A9DAF0EEE8BBA8DD0E64A /* WatchHID.app */;
-			productType = "com.apple.product-type.application";
-		};
 		A8E2BC837637E1B9D584DA0D /* WatchHIDWatchApp */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 622D6579A98C67344222BE28 /* Build configuration list for PBXNativeTarget "WatchHIDWatchApp" */;
@@ -255,10 +199,6 @@
 						ProvisioningStyle = Automatic;
 						TestTargetID = A8E2BC837637E1B9D584DA0D;
 					};
-					5BBF9351F2683F19C8B964D1 = {
-						DevelopmentTeam = "";
-						ProvisioningStyle = Automatic;
-					};
 					A8E2BC837637E1B9D584DA0D = {
 						DevelopmentTeam = "";
 						ProvisioningStyle = Automatic;
@@ -281,7 +221,6 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				5BBF9351F2683F19C8B964D1 /* WatchHID */,
 				A8E2BC837637E1B9D584DA0D /* WatchHIDWatchApp */,
 				20716849D6B3159C138E3C2D /* WatchHIDUITests */,
 			);
@@ -289,14 +228,6 @@
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
-		1279EBB66413FE7653ED8225 /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				4B08FA18222C37AA58EBF0DA /* Assets.xcassets in Resources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 		5E18C1D3DB8F1E7507419877 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -309,24 +240,6 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
-		84929424B9D4C55EB178891C /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				A25590A8B58294F64719391B /* BLEScanner.swift in Sources */,
-				3DFA40E4337FD0076A1927C6 /* ChecklistView.swift in Sources */,
-				3955D5CF2320D18CA0C38B62 /* HIDDescriptors.swift in Sources */,
-				D5DA74C18821C6B44503A39E /* HIDMetadata.swift in Sources */,
-				7C86C1BF3FE469311A5EE68F /* KeyboardInputState.swift in Sources */,
-				8D1F7C49B3D65EAC282FC85C /* LogEntry.swift in Sources */,
-				51AAC040450AF10BCDF5E8B2 /* MouseInputState.swift in Sources */,
-				B495B42D676F0A605F040F7D /* OutputHostRouting.swift in Sources */,
-				EAFAFCA4E0106C400FA8C904 /* ScannerView.swift in Sources */,
-				8B3737AA07380EBE4D1A41F4 /* WatchHIDApp.swift in Sources */,
-				03A04A1E03CECAE1C8713578 /* WatchLogInbox.swift in Sources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
 		BAA87396A5AC415FBE7043DE /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -470,12 +383,12 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				MARKETING_VERSION = 0.1.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
@@ -531,40 +444,15 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				MARKETING_VERSION = 0.1.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = watchos;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				SWIFT_VERSION = 5.0;
 				WATCHOS_DEPLOYMENT_TARGET = 10.0;
-			};
-			name = Release;
-		};
-		7F6336A279DF2F37821E7E8C /* Release */ = {
-			isa = XCBuildConfiguration;
-			baseConfigurationReference = C60B85B52CD2620AEC15823B /* Developer.xcconfig */;
-			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_ENTITLEMENTS = Apps/iOS/WatchHID.entitlements;
-				CODE_SIGN_IDENTITY = "iPhone Developer";
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = Apps/iOS/Info.plist;
-				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "WatchHID scans for the Watch Mouse BLE advertisement during R1 tests.";
-				INFOPLIST_KEY_NSBluetoothPeripheralUsageDescription = "WatchHID uses Bluetooth to verify Watch Mouse advertising.";
-				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
-				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/Frameworks",
-				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.zy.watchhid;
-				SDKROOT = iphoneos;
-				SUPPORTS_MACCATALYST = NO;
-				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Release;
 		};
@@ -606,31 +494,6 @@
 			};
 			name = Debug;
 		};
-		F2AAD42FE06A450174B5F562 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			baseConfigurationReference = C60B85B52CD2620AEC15823B /* Developer.xcconfig */;
-			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_ENTITLEMENTS = Apps/iOS/WatchHID.entitlements;
-				CODE_SIGN_IDENTITY = "iPhone Developer";
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = Apps/iOS/Info.plist;
-				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "WatchHID scans for the Watch Mouse BLE advertisement during R1 tests.";
-				INFOPLIST_KEY_NSBluetoothPeripheralUsageDescription = "WatchHID uses Bluetooth to verify Watch Mouse advertising.";
-				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
-				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = UIInterfaceOrientationPortrait;
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/Frameworks",
-				);
-				PRODUCT_BUNDLE_IDENTIFIER = com.zy.watchhid;
-				SDKROOT = iphoneos;
-				SUPPORTS_MACCATALYST = NO;
-				TARGETED_DEVICE_FAMILY = 1;
-			};
-			name = Debug;
-		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -657,15 +520,6 @@
 			buildConfigurations = (
 				C7FA7656535D19174AE07824 /* Debug */,
 				5B3F9774C9E14E85327A90DA /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Debug;
-		};
-		B9846A28114D731A17F915C6 /* Build configuration list for PBXNativeTarget "WatchHID" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				F2AAD42FE06A450174B5F562 /* Debug */,
-				7F6336A279DF2F37821E7E8C /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
