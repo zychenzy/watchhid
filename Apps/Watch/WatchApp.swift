@@ -150,6 +150,23 @@ struct ContentView: View {
         probe.keyboardBusy ? "xmark.circle.fill" : "mic.fill"
     }
 
+
+    /// Pull the first transcript without logging plaintext. Accept String or NSString.
+    private static func dictationString(from results: [Any]?) -> String? {
+        guard let first = results?.first else { return nil }
+        let text: String
+        if let value = first as? String {
+            text = value
+        } else if let value = first as? NSString {
+            text = value as String
+        } else {
+            LogStore.shared.warn("Dictation result ignored; unexpected type")
+            return nil
+        }
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
+    }
+
     private func startDictation() {
         guard let controller = WKApplication.shared().visibleInterfaceController else {
             logStore.warn("Dictation unavailable: no visible interface controller")
@@ -161,12 +178,13 @@ struct ContentView: View {
         // Captured text is typed into the Mac when possible. The Watch does not show it.
         controller.presentTextInputController(withSuggestions: nil, allowedInputMode: .plain) { results in
             Task { @MainActor in
-                defer {
-                    dictationPresented = false
-                    probe.setInputUIBlocked(showSettings)
-                    probe.setInputSceneActive(scenePhase == .active)
-                }
-                guard let text = results?.first as? String else {
+                // Unblock and keep the input scene active before typing. The
+                // system sheet often leaves scenePhase inactive in this
+                // callback, which previously cancelled or blocked the send.
+                dictationPresented = false
+                probe.setInputUIBlocked(showSettings)
+                probe.setInputSceneActive(true)
+                guard let text = Self.dictationString(from: results) else {
                     LogStore.shared.info("Dictation canceled or empty")
                     return
                 }
