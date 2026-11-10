@@ -3,9 +3,10 @@
 # input Report use encrypted reads and (for Report) encrypted notifications,
 # so a host that only did a cleartext read may be pushed to complete HID bonding.
 # Encrypted HOGP plus the current input-gate (any Report CCCD subscriber)
-# has been confirmed on a second Mac: same-node WatchHID / Ultra2-R1
-# identity and pointer movement. Reconnect reliability and wireless
-# iPhone isolation are still not fully proven.
+# has been confirmed on a second Mac: same-node advertised HID identity
+# (currently WatchHID / Ultra2-R1) and pointer movement. That identity is
+# the current build string, not a required physical Watch model.
+# Reconnect reliability and wireless iPhone isolation are still not fully proven.
 # This does not copy or reuse another Mac's Bluetooth bond. Do not reset
 # system Bluetooth or unpair the system Apple Watch.
 set -euo pipefail

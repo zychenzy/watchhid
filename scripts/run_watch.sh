@@ -20,4 +20,4 @@ echo "  ./scripts/ship-encrypted-hogp.sh"
 echo "  ./scripts/install-signed-watch-app.sh"
 echo
 echo "The installer has a single readiness gate. Do not run --check-ready immediately before install."
-echo "Free Apple ID: resign roughly every 7 days in Xcode."
+echo "If you sign with a free Personal Team, Apple documents a 7-day provisioning cycle; rebuild and reinstall after expiry. That is not a paid-membership rule."

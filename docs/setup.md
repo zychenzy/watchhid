@@ -7,9 +7,9 @@ Do not print or commit device UDIDs, Bluetooth addresses, provisioning device li
 ## 1. Prerequisites
 
 - Full Xcode, not only Command Line Tools
-- Developer Mode enabled on the Apple Watch
+- Developer Mode enabled on the Apple Watch. Operator testing was done on an Apple Watch Ultra 2. Other models are not a verified matrix and are not declared unsupported.
 - The iPhone paired with that Watch (a watchOS requirement; WatchHID itself is watch-only and has no companion iPhone app)
-- An Apple Developer account for signing
+- An Apple account that can sign a watchOS app in Xcode: a free Personal Team or a paid Apple Developer Program membership. This project was tested with a free Personal Team; that is an example, not a requirement. Apple documents that free Personal Team App IDs, devices, and provisioning profiles expire 7 days after issuance, after which you rebuild and reinstall: [About your developer account](https://developer.apple.com/help/account/basics/about-your-developer-account/). Do not treat that 7-day cycle as a rule for a paid membership. This project is not an App Store submission.
 
 The macOS login account and the Apple ID used for signing may be different. Do not change the Mac login just to sign.
 
@@ -88,7 +88,7 @@ If macOS shows a Bluetooth pairing prompt, confirm it in the system dialog. Shor
 ./scripts/verify-hogp-mouse.sh
 ```
 
-`NODE_OK` means this Mac sees the WatchHID mouse node (`WatchHID` / `Ultra2-R1`, mouse/pointer usage). It is not proof that the pointer moved. Success is that node plus movement you see yourself.
+`NODE_OK` means this Mac sees one IOHID node with the app's advertised HID identity (currently `WatchHID` / `Ultra2-R1`) and mouse/pointer usage. Those strings come from the current build, not from the physical Watch model name. It is not proof that the pointer moved. Success is that node plus movement you see yourself. If you change the advertised strings in a local build, point the verify script at them with `WATCHHID_HID_MANUFACTURER` and `WATCHHID_HID_MODEL`.
 
 A new Mac needs its own encrypted HOGP bond. System Apple Watch pairing and iCloud do not copy that bond from another Mac.
 

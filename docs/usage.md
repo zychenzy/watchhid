@@ -1,6 +1,6 @@
 # Usage
 
-WatchHID is a watch-only app. Pointer, clicks, Crown scrolling, and system dictation do not require an iPhone app. A paired iPhone may still be needed for watchOS itself or for the developer tunnel used during install.
+WatchHID is a watch-only app. Pointer, clicks, Crown scrolling, and system dictation do not require an iPhone app. Operator testing was done on an Apple Watch Ultra 2; other models are unverified, not declared unsupported, and not guaranteed. A paired iPhone may still be needed for watchOS itself or for the developer tunnel used during install.
 
 ## Trackpad
 

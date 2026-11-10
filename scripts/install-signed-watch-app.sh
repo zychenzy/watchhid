@@ -234,7 +234,7 @@ Keep the Watch screen on. If this Mac shows a Bluetooth pairing prompt, confirm 
 
   ./scripts/verify-hogp-mouse.sh
 
-The verify script only checks same-node IOHID identity (Manufacturer=WatchHID, ModelNumber=Ultra2-R1, mouse/pointer usage). A NODE_OK result is not proof that the pointer moved. Success for a return test is a WatchHID mouse node plus actual pointer movement you see yourself.
+The verify script only checks same-node IOHID identity for the app's advertised manufacturer/model (currently WatchHID / Ultra2-R1) and mouse/pointer usage. Those strings are the current build identity, not a required physical Watch model. A NODE_OK result is not proof that the pointer moved. Success for a return test is that node plus actual pointer movement you see yourself.
 A connected Apple Watch in Bluetooth settings, or only clicking the pairing prompt, is not enough.
 Do not reset system Bluetooth, and do not unpair the system Apple Watch.
 EOF
