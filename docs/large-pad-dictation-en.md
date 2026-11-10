@@ -2,7 +2,7 @@
 
 Branch intent for `feature/large-pad-dictation-en-hid`.
 
-- Almost-full Watch touchpad, with a bottom dictation button (`Dictation` / `语音听写` / `語音聽寫`).
+- Almost-full Watch touchpad, with a bottom icon-only dictation button (microphone, or cancel while typing).
 - After you tap the button it shows a Dictating state, then Cancel while typable text is being sent. The Watch does not show the captured text.
 - System dictation (`presentTextInputController`) types typable English into the focused Mac field only when the English HID keyboard is on.
 
