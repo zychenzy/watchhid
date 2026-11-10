@@ -46,12 +46,18 @@ final class PeripheralProbe: NSObject, ObservableObject {
 
     func prepareMacTouchpad() {
         guard !isRunning else { return }
+        // Default remains the accepted mini recipe. The new-Mac / no-bond
+        // package is built with WH_HOGP_ENCRYPTED; see scripts/ship-encrypted-hogp.sh.
+        #if WH_HOGP_ENCRYPTED
+        experimentOverride = "standard128-encrypted"
+        #else
         experimentOverride = "standard128"
+        #endif
         // Mouse regression recovery: keep Report ID / composite OFF unless user explicitly enabled keyboard.
         mouse.usesReportID = keyboardFeatureEnabled
         keyboard.usesReportID = true
         keyboardFeatureFlag = keyboardFeatureEnabled
-        log.info("prepareMacTouchpad keyboardFeature=\(keyboardFeatureEnabled) usesReportID=\(mouse.usesReportID)")
+        log.info("prepareMacTouchpad case=\(experiment) keyboardFeature=\(keyboardFeatureEnabled) usesReportID=\(mouse.usesReportID)")
         start()
     }
 
