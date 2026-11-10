@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		03A04A1E03CECAE1C8713578 /* WatchLogInbox.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E1042AAC9182ECFD3F5FC11 /* WatchLogInbox.swift */; };
 		1793EFF2CF55D6BF98D1B922 /* LogStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = D391F124F26978C6EA9CE92E /* LogStore.swift */; };
+		301B0E7434CE00BC7E7D06C7 /* HIDMetadata.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1E0A87921C8F36732951D39 /* HIDMetadata.swift */; };
 		3955D5CF2320D18CA0C38B62 /* HIDDescriptors.swift in Sources */ = {isa = PBXBuildFile; fileRef = F57B97A047F9857D9E240285 /* HIDDescriptors.swift */; };
 		3DFA40E4337FD0076A1927C6 /* ChecklistView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D902E4B19FE4FDDEEAC50856 /* ChecklistView.swift */; };
 		4B08FA18222C37AA58EBF0DA /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 05B5D0BB50EDC1EE8902F855 /* Assets.xcassets */; };
@@ -24,6 +25,7 @@
 		ACB011887E8053A42457B5C6 /* WatchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13B069EDE22D71C7F8BFD107 /* WatchApp.swift */; };
 		B310CE42CF005BB93C690C8D /* RuntimeEnumerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 355CD0CB069653CDE1059908 /* RuntimeEnumerator.swift */; };
 		BC0E392174518CBEF23FEBF6 /* MouseInputState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04D84C02614867018A14428D /* MouseInputState.swift */; };
+		D5DA74C18821C6B44503A39E /* HIDMetadata.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1E0A87921C8F36732951D39 /* HIDMetadata.swift */; };
 		E8BDAEE5F762C438837BA3A9 /* HIDDescriptors.swift in Sources */ = {isa = PBXBuildFile; fileRef = F57B97A047F9857D9E240285 /* HIDDescriptors.swift */; };
 		EAFAFCA4E0106C400FA8C904 /* ScannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 763F53C18474CBF220471587 /* ScannerView.swift */; };
 		EFD93EDDE452DD05AB357901 /* LogEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDBD31517FD5FE527FAB7FB6 /* LogEntry.swift */; };
@@ -73,6 +75,7 @@
 		9E65FE9002DE5DD83C68D2C3 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		9E9BEC3135FA4D3603247DE4 /* PeripheralManagerFactory.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PeripheralManagerFactory.h; sourceTree = "<group>"; };
 		AB1DC3443ED5190421DD8574 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		C1E0A87921C8F36732951D39 /* HIDMetadata.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HIDMetadata.swift; sourceTree = "<group>"; };
 		C60B85B52CD2620AEC15823B /* Developer.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Developer.xcconfig; sourceTree = "<group>"; };
 		D391F124F26978C6EA9CE92E /* LogStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogStore.swift; sourceTree = "<group>"; };
 		D902E4B19FE4FDDEEAC50856 /* ChecklistView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChecklistView.swift; sourceTree = "<group>"; };
@@ -155,6 +158,7 @@
 			isa = PBXGroup;
 			children = (
 				F57B97A047F9857D9E240285 /* HIDDescriptors.swift */,
+				C1E0A87921C8F36732951D39 /* HIDMetadata.swift */,
 				047E8037B023988114B6014B /* KeyboardInputState.swift */,
 				DDBD31517FD5FE527FAB7FB6 /* LogEntry.swift */,
 				04D84C02614867018A14428D /* MouseInputState.swift */,
@@ -269,6 +273,7 @@
 				A25590A8B58294F64719391B /* BLEScanner.swift in Sources */,
 				3DFA40E4337FD0076A1927C6 /* ChecklistView.swift in Sources */,
 				3955D5CF2320D18CA0C38B62 /* HIDDescriptors.swift in Sources */,
+				D5DA74C18821C6B44503A39E /* HIDMetadata.swift in Sources */,
 				7C86C1BF3FE469311A5EE68F /* KeyboardInputState.swift in Sources */,
 				8D1F7C49B3D65EAC282FC85C /* LogEntry.swift in Sources */,
 				51AAC040450AF10BCDF5E8B2 /* MouseInputState.swift in Sources */,
@@ -283,6 +288,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				E8BDAEE5F762C438837BA3A9 /* HIDDescriptors.swift in Sources */,
+				301B0E7434CE00BC7E7D06C7 /* HIDMetadata.swift in Sources */,
 				91B26999AEA84E349759C8F6 /* KeyboardInputState.swift in Sources */,
 				EFD93EDDE452DD05AB357901 /* LogEntry.swift in Sources */,
 				1793EFF2CF55D6BF98D1B922 /* LogStore.swift in Sources */,

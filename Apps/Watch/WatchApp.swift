@@ -28,6 +28,8 @@ struct ContentView: View {
     @EnvironmentObject private var logStore: LogStore
     @EnvironmentObject private var phoneBridge: PhoneBridge
     @State private var showSettings = false
+    @State private var dictationPresented = false
+    private var inputOverlayVisible: Bool { showSettings || dictationPresented || probe.dictationPreview != nil }
 
     var body: some View {
         VStack(spacing: 4) {
@@ -92,6 +94,8 @@ struct ContentView: View {
             }
         }
         .padding(.horizontal, 6)
+        .onAppear { probe.setInputSceneActive(scenePhase == .active) }
+        .onChange(of: inputOverlayVisible) { _, blocked in probe.setInputUIBlocked(blocked) }
         .onChange(of: scenePhase) { _, phase in probe.setInputSceneActive(phase == .active) }
         .onDisappear { probe.setInputSceneActive(false) }
         .task {
@@ -120,9 +124,16 @@ struct ContentView: View {
             logStore.warn("Dictation unavailable: no visible interface controller")
             return
         }
-        // nil suggestions → system tries to open dictation directly (device; Simulator may differ).
+        dictationPresented = true
+        probe.setInputUIBlocked(true)
+        // System text entry returns a String; nothing is typed into the Mac automatically.
         controller.presentTextInputController(withSuggestions: nil, allowedInputMode: .plain) { results in
             Task { @MainActor in
+                defer {
+                    dictationPresented = false
+                    probe.setInputUIBlocked(showSettings || probe.dictationPreview != nil)
+                    probe.setInputSceneActive(scenePhase == .active)
+                }
                 guard let text = results?.first as? String else {
                     LogStore.shared.info("Dictation canceled or empty")
                     return
@@ -140,18 +151,19 @@ struct DictationReviewSheet: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 8) {
-                Text("确认发送到 Mac").font(.headline)
-                Text("仅英文 ASCII 会经 HID 键盘发送；中文等非 ASCII 会被跳过，不会乱码替换。")
+                Text("听写结果").font(.headline)
+                Text("文字仅保留在手表，不会自动输入 Mac。")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
                 Text(probe.dictationPreview ?? "")
                     .font(.body)
                 HStack {
-                    Button("取消") {
+                    Button("完成") {
                         probe.clearDictationPreview()
                         dismiss()
                     }
                     Spacer()
+                    if probe.keyboardFeatureEnabled {
                     Button("发送英文") {
                         if let text = probe.dictationPreview {
                             probe.typeReviewedASCII(text)
@@ -159,10 +171,11 @@ struct DictationReviewSheet: View {
                         dismiss()
                     }
                     .buttonStyle(.borderedProminent)
-                    .disabled(!(probe.keyboardFeatureEnabled && (probe.dictationPreview?.isEmpty == false)))
+                    .disabled(probe.dictationPreview?.isEmpty != false)
+                    }
                 }
                 if !probe.keyboardFeatureEnabled {
-                    Text("请先在设置中打开「英文键盘 HID」（可能需重新订阅，默认关闭以保护鼠标）。")
+                    Text("英文发送仍是实验功能；当前只查看听写文字。")
                         .font(.caption2)
                         .foregroundStyle(.orange)
                 }
