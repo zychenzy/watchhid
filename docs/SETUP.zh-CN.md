@@ -120,12 +120,12 @@ python3 scripts/watchhid_scriptlib.py provision-info ./candidate/WatchHIDWatchAp
 
 ## 7. 运行 HOGP / 触控板
 
-应用装上手表并在手表前台打开后，Mac 作为普通蓝牙 HID 主机接收鼠标即可。此时：
+应用必须在手表**前台**打开，并能看见状态文字。只在锁屏或后台时，主机常常读到的是系统 Apple Watch 的 Device Information，而不是 WatchHID 的 GATT。Mac 作为普通蓝牙 HID 主机接收鼠标即可。此时：
 
 - 不需要 Xcode 正在运行；
 - 不需要 iPhone USB 连接到这台 Mac；
-- 首次在一台新 Mac 上打开 WatchHID 时，系统可能弹出蓝牙配对确认。这是设置的一步，在系统对话框里确认即可。这不是取消手表的系统配对，也不需要重置蓝牙；
-- **不能**把「蓝牙设置里显示已连接」、已经点过配对确认、Xcode / Device Hub 的开发隧道，或系统里一个普通 Mouse 名称，当成 WatchHID 已成功。成功的实证是系统 HID 出现项目约定的身份（例如 Manufacturer 为 `WatchHID`）并且指针真的移动。
+- 加密包可以触发主机 `startAutoPairing`。若系统弹出 passkey / 蓝牙配对确认，必须在这台 Mac 的系统对话框里完成确认。这是设置的一步，不是取消手表的系统配对，也不需要重置蓝牙。配对和加密可以成功，系统也可以因此创建 `IOHIDUserDevice`；
+- **不能**把「蓝牙设置里显示已连接」（哪怕是 HID BLE）、已经点过配对确认、Xcode / Device Hub 的开发隧道，或系统里一个普通 Mouse / “ZY的Apple Watch” 名称，当成 WatchHID 已成功。成功的实证仍然是：同一 IOHID 节点上出现 Manufacturer=`WatchHID`、ModelNumber=`Ultra2-R1` 以及鼠标/指针 Usage，并且指针真的移动。手表状态若一直停在 `等待 Mac 系统订阅`，也不等于这台 Mac 的订阅已经被应用接受，见下方源码事实。
 
 回来验收的具体手势与听写步骤见 [QUICKSTART.zh-CN.md](QUICKSTART.zh-CN.md)。出门后再开始的最短步骤见 [RETURN-CHECKLIST.zh-CN.md](RETURN-CHECKLIST.zh-CN.md)。
 
@@ -137,13 +137,23 @@ python3 scripts/watchhid_scriptlib.py provision-info ./candidate/WatchHIDWatchAp
 
 - 另一台电脑上已经成功的加密 HOGP 绑定，不能当作可以拷贝过来的密钥来复用。它只属于「这只手表 ↔ 那台电脑的蓝牙控制器」；系统 Apple Watch 配对或 iCloud 都不会把它带来。这是约束，不是“已经在新 Mac 上证明绑定不存在”的证据。
 - 在原开发用的 Mac mini 上，系统曾经成功创建 Manufacturer 为 `WatchHID`、ModelNumber 为 `Ultra2-R1` 的鼠标，并且指针可移动。那次验收日志没有出现「因链路未加密而拒绝创建鼠标」的记录。
-- 在这台新 Mac 上，曾经观察到系统已连上 HID BLE 并读到鼠标报告描述，随后明确拒绝创建 HID 设备，当时的原因是链路未加密。旧日志里的 `not encrypted` / 「因链路未加密而拒绝」只说明那一次创建被这个原因挡住，不能证明这台电脑上完全不存在任何既有绑定。
-- 加密配方 `standard128-encrypted`（构建开关 `WH_HOGP_ENCRYPTED`）目前只是已签名构建候选。截至 2026-11-10 11:56（北京时间，Asia/Shanghai），这台 Mac 仍未出现 WatchHID 系统鼠标，也未观察到新的 HID 服务初始化。因此不能宣称加密包路径已经解决首次 bond，或已经是快速、可靠的成功路径。
+- 2026-11-10 上午（北京时间，Asia/Shanghai），这台新 Mac 在未加密包下曾读到 WatchHID 的 Device Information 指纹（Manufacturer 先是 `<private>`，随后是 “Apple Inc.”，PnP 为 `BT / 0x004C / 0x0000 / 0x0001`），操作者确认过配对弹窗，随后 BTLEServer 以 `Not creating HID device as the link is not encrypted` 拒绝创建 HID。这只说明那一次创建被“链路未加密”挡住，不能证明这台电脑上完全不存在任何既有绑定。点过配对确认不是 HID 加密已成功。当时没有出现 WatchHID 节点。
+- 同日 11:54 已将 mini 签名的加密包（`WH_HOGP_ENCRYPTED` / `standard128-encrypted`）无线安装并拉起。该配方给 Report Map 和输入 Report 设置加密读，并给输入 Report 设置加密通知；不要写成这些读/通知特征还要求加密写。11:54 的无线安装发生在 iPhone 同一 Wi-Fi 且已解锁、未插 USB 时，不能推广成“永远需要 iPhone”或“无线隔离已验证”。
+- 同日下午，在 WatchHID 的 GATT 尚未被稳定读到（Manufacturer 常常只有 “Apple Inc.”、没有 PnP；应用一度不在前台）时，主机仍会 `startAutoPairing`，但对端约 60 毫秒内以 Pairing Failed reason=8 中止，没有可见配对界面。协议栈启动了自动配对；对端在确认界面出现之前就中止了。残留或冲突的 LE 绑定只是可能，没有被证明。
+- 同日 14:01 起，应用在前台且状态为 `等待 Mac 系统订阅` 时，主机再次读到 WatchHID GATT 指纹（第二条 Manufacturer 为 `<private>`，PnP 为 `BT / 0x004C / 0x0000 / 0x0001`，以及 Report Map / Report）。随后出现 passkey 确认界面，操作者在这台 Mac 上完成确认。14:01:49 加密启用（`isPairing=1`，`smpPairingCompleted status=0`），这台 Mac 订阅了输入 Report，BTLEServer 启动了 `IOHIDUserDevice`。这一窗口内没有 ATT 242、ATT 15、reason=8，也没有 “Not creating HID…”。
+- 尽管如此，同一节点上的 WatchHID / `Ultra2-R1` 鼠标身份仍未出现。系统创建的 HID 鼠标身份是 `Apple Inc.` / `Watch7,5` / `ZY的Apple Watch`，报告描述符 52 字节（项目基线 `mouseReportMap` 是 64 字节，长度不一致）。之后在安全桌面上短滑并轻点，指针没有移动，手表仍显示 `等待 Mac 系统订阅`。因此：这台 Mac 上的配对和加密现在有实证；WatchHID 身份和指针移动还没有。不能宣称加密路径已经是快速、可靠的成功方案。不要为此重置刚刚完成的绑定。
 
-**推断 / 仍待回来后验证：**
+当天更完整的时间线和日志摘录见 [new-mac-hogp-2026-11-10.zh-CN.md](new-mac-hogp-2026-11-10.zh-CN.md)。
 
-- 默认配方 `standard128` 的 GATT 特征不要求加密，所以新主机可以明文读取报告描述，然后在创建鼠标这一步被拒绝。要把新 Mac 走到与 mini 相同的可用状态，工作假设是这条 HID 连接还需要完成加密绑定。这还没有被新 Mac 上的指针移动证实。
-- 加密配方给报告描述（Report Map）和输入 Report 设置了加密读（`readEncryptionRequired`），并给输入 Report 设置了加密通知（`notifyEncryptionRequired`）。不要把这写成这些读/通知特征还要求加密写。源码里 Protocol Mode / Control Point 另有各自的写权限，那不是鼠标报告描述的读/通知路径。
+**源码事实（不是对当天日志的再解释）：**
+
+- `等待 Mac 系统订阅` 表示界面在前台且 `macInputReady` 为假。`macInputReady` 要求探针正在运行、外设管理器已 poweredOn、已持有鼠标 Report，并且当前 CCCD 订阅者集合**精确等于**源码里写死的那一个 Mac 中央标识（来自原先那台 mini；不要写出这个标识）。日常触控发送在调用底层通知前也会再做一次同样的检查。底层通知 API 若被调用，会发给当时所有已订阅的中央；但日常路径在集合不匹配时根本不会调用它。所以这个状态不是“任意 Mac 一订阅就成功”。它也可以解释：这台 Mac 已在 14:01:49 订阅了 Report，手表却仍显示正在等待。
+- 默认 PnP 使用 Apple 厂商号 `0x004C`。源码只把它写成可能促使 SameAccount 合并的推测性对照；当天节点以系统 Apple Watch 身份出现，与这条推测相符，但还不是已证实的合并机制。
+
+**推断 / 仍待验证：**
+
+- 默认配方 `standard128` 的 GATT 特征不要求加密，所以新主机可以明文读取报告描述，然后在创建鼠标这一步被拒绝。加密配方的目的，是让新主机在读报告描述时进入配对/加密。这台 Mac 上配对和加密已经完成；要把新 Mac 走到与 mini 相同的可用状态，还需要项目约定的节点身份，以及指针真正移动。
+- 指针没有移动的一个有源码依据的主要假说，是输入门和鼠标通知被钉在了另一个 Mac 的中央标识上，因而没有发出报告。不要把它写成唯一原因：身份不是 `WatchHID` / `Ultra2-R1`，以及 52 字节描述符与 64 字节基线不一致，即使报告发出去也可能挡住可用的项目鼠标。
 - 成功标准仍然是：同一 IOHID 节点上出现 Manufacturer=`WatchHID`、ModelNumber=`Ultra2-R1` 以及 Generic Desktop 的鼠标/指针 Usage，并且你在安全桌面上看见指针移动。`verify-hogp-mouse.sh` 只检查同节点身份，NODE_OK 不等于指针已经移动。不要为了这一步重置系统蓝牙，或取消手表的系统配对。
 
 ## 8. 真实验证与听写边界
@@ -156,7 +166,7 @@ python3 scripts/watchhid_scriptlib.py provision-info ./candidate/WatchHIDWatchAp
 
 | 现象 | 先怎么理解 | 不要做什么 |
 |---|---|---|
-| 指针不动，但蓝牙或开发器显示已连接 | 首次在新 Mac 上使用时，若系统弹出蓝牙配对确认，先确认。确认之后仍可能因链路未加密或 ATT242 等错误，导致系统没有创建可用的鼠标节点。先退出并在手表上手动重新打开应用，再短滑；只完成弹窗并不等于指针已经可用。 | 不要取消手表的系统配对、清蓝牙缓存、重置系统蓝牙或关安全防护。 |
+| 指针不动，但蓝牙或开发器显示已连接 | 先确认 WatchHID 在手表前台，并能看见状态。若系统弹出 passkey / 配对确认，先在这台 Mac 上完成确认。只完成弹窗、或只看到已连接的 “ZY的Apple Watch” / HID BLE，都不等于项目成功。若状态一直是 `等待 Mac 系统订阅`，源码要求订阅者必须是写死的那一个 Mac 中央标识，这台新 Mac 的订阅不一定会被当成就绪。先保留现场，不要拆掉刚刚完成的绑定。 | 不要取消手表的系统配对、清蓝牙缓存、重置系统蓝牙或关安全防护。 |
 | Mac 锁屏 | 锁屏时不要把本机探测失败写成应用损坏。先解锁再测指针。 | 不要为了测试绕过锁屏或改安全设置。 |
 | `devicectl` 看不到手表，或列表是 `unavailable` / 只有 `available (paired)` | 开发安装通道和蓝牙不是一回事。先确认完整 Xcode 已选中并完成 first launch、手表已开 Developer Mode、已信任这台电脑；把手表拿近、点亮并解锁；把配对的 iPhone 拿近并解锁，尽量连同一 Wi-Fi（不必插线）。等到状态是 `connected` 再安装。可用 `./scripts/install-signed-watch-app.sh`，通道不可用时它会打印这份清单。 | 不要重置蓝牙或取消系统配对来“打通”开发连接。也不要把蓝牙已连接当成已经可以装包。 |
 | 已签名包装不上或运行被拒 | 先看描述文件是否过期、这只手表是否在设备列表中。过期就在本机用开发 Apple ID 重新签名。 | 不要从其他 Mac 复制私钥或登录 token。 |
@@ -174,7 +184,7 @@ python3 scripts/watchhid_scriptlib.py provision-info ./candidate/WatchHIDWatchAp
 
 其他电脑上已经成功的加密 HOGP 绑定**不能**复用到新 Mac。它只存在于「这只手表 ↔ 那台电脑的蓝牙控制器」这一对设备之间；系统 Apple Watch 配对或 iCloud 也不会把这份密钥带过来。不要复制其他电脑的蓝牙偏好设置或钥匙串来“转移”绑定，以免弄乱两边已有的配对。
 
-能复用的是方法，不是密钥。下面这条路径可以较快地重新构建并安装加密配方候选；它还没有在这台新 Mac 上被证明能完成首次绑定，或保证快速、可靠地成功。在**能签名**的 Mac 上（已有 `Config/Developer.xcconfig` 和 Apple Development 证书）执行：
+能复用的是方法，不是密钥。下面这条路径可以较快地重新构建并安装加密配方候选。2026-11-10 它已在这台新 Mac 上完成配对和加密，并创建了 HID 设备，但还没有得到项目约定的 WatchHID 身份，也没有指针移动，因此不能写成快速、可靠的成功方案。在**能签名**的 Mac 上（已有 `Config/Developer.xcconfig` 和 Apple Development 证书）执行：
 
 ```bash
 ./scripts/ship-encrypted-hogp.sh
@@ -194,15 +204,15 @@ python3 scripts/watchhid_scriptlib.py provision-info ./candidate/WatchHIDWatchAp
 
 脚本会在开发通道为 `connected` 时安装并拉起 WatchHID；通道不可用时会说明要先亮起手表、把配对 iPhone 放在同一 Wi-Fi（不必插线），然后退出。装好后：
 
-1. 保持手表屏幕亮着。
-2. 若系统弹出蓝牙配对确认，在对话框里确认。不要重置系统蓝牙，也不要取消手表的系统配对。
+1. 让 WatchHID 留在手表前台，保持屏幕亮着，确认能看见状态文字。
+2. 若系统弹出 passkey / 蓝牙配对确认，在这台 Mac 的对话框里完成确认。不要重置系统蓝牙，也不要取消手表的系统配对。
 3. 短滑触控板，再运行：
 
 ```bash
 ./scripts/verify-hogp-mouse.sh
 ```
 
-`./scripts/verify-hogp-mouse.sh` 通过只表示同一 IOHID 节点上出现了 `WatchHID` / `Ultra2-R1` 和鼠标/指针 Usage，并不表示指针移动已经通过。回来验收还需要你在安全桌面上亲眼看见指针移动。只看到蓝牙菜单里 Apple Watch 已连接，或只点过配对弹窗，都还不够。
+`./scripts/verify-hogp-mouse.sh` 通过只表示同一 IOHID 节点上出现了 `WatchHID` / `Ultra2-R1` 和鼠标/指针 Usage，并不表示指针移动已经通过。回来验收还需要你在安全桌面上亲眼看见指针移动。只看到蓝牙菜单里 Apple Watch 已连接（哪怕是 HID BLE）、只点过配对弹窗，或手表仍显示 `等待 Mac 系统订阅`，都还不够。2026-11-10 在这台新 Mac 上，配对和加密已经成功并创建了 HID 设备，但身份是系统 Apple Watch，指针也没有移动；详情见 [new-mac-hogp-2026-11-10.zh-CN.md](new-mac-hogp-2026-11-10.zh-CN.md)。下一步若要改输入门（不再钉在另一个 Mac 的中央标识上）或核对身份/PnP，需要在能签名的电脑上重新出包，而不是重置蓝牙。
 
 给后续接手的人也可以直接看项目 skill：[.cursor/skills/watchhid-new-mac-hogp/SKILL.md](../.cursor/skills/watchhid-new-mac-hogp/SKILL.md)。
 
