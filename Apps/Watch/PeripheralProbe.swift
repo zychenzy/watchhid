@@ -3,6 +3,19 @@ import CoreBluetooth
 import WatchKit
 import Combine
 
+enum HIDHostKind: String, Equatable {
+    case mac
+    case iPhone
+    case unknown
+}
+
+struct HIDHostInfo: Identifiable, Equatable {
+    let id: UUID
+    let kind: HIDHostKind
+    let title: String
+    let isSelected: Bool
+}
+
 @MainActor
 final class PeripheralProbe: NSObject, ObservableObject {
     static let shared = PeripheralProbe()
@@ -10,60 +23,315 @@ final class PeripheralProbe: NSObject, ObservableObject {
     @Published var isRunning = false
     @Published var reportSubscriberCount = 0
     private var subscribedCentrals = Set<UUID>()
+    private var keyboardSubscribedCentrals = Set<UUID>()
+    private var mouseCentrals: [UUID: CBCentral] = [:]
+    private var keyboardCentrals: [UUID: CBCentral] = [:]
+    @Published private(set) var hidHosts: [HIDHostInfo] = []
+    @Published private(set) var outputIsAutomatic = PeripheralProbe.loadSelectedOutputHostID() == nil
+    private var selectedOutputHostID: UUID? = PeripheralProbe.loadSelectedOutputHostID()
+    private var hostKindOverrides: [UUID: HIDHostKind] = PeripheralProbe.loadHostKindOverrides()
     private var activeReport: NSObject?
+    private var activeKeyboardReport: NSObject?
+    /// Identity for the separate keyboard HID service (not the composite mouse map).
+    private nonisolated(unsafe) var keyboardHIDServiceObject: AnyObject?
+    private nonisolated(unsafe) var keyboardReportObject: AnyObject?
     @Published private(set) var mouseEnabled = false
     @Published private(set) var mouseTouching = false
-    @Published private(set) var inputStatus = "等待 Mac 订阅"
+    @Published private(set) var inputStatus = L10n.string("status.waiting_subscription")
+    @Published private(set) var keyboardFeatureEnabled: Bool = PeripheralProbe.storedKeyboardFeatureEnabled()
+    /// Nonisolated mirror for ATT read callbacks (must stay in sync with keyboardFeatureEnabled).
+    private nonisolated(unsafe) var keyboardFeatureFlag: Bool = PeripheralProbe.storedKeyboardFeatureEnabled()
+    @Published private(set) var inputPausedByUser = false
+    @Published private(set) var lastTypeStatus = ""
+    private var pendingTypeText: String?
+    private var typeRetryTask: Task<Void, Never>?
+    private var advertiseRetryTask: Task<Void, Never>?
+    @Published private(set) var keyboardBusy = false
+    private var lastMouseNotifyLog = -Double.infinity
     private var mouse = MouseInputState()
+    private var keyboard = KeyboardInputState()
     private var sceneActive = false
+    private var inputUIBlocked = false
     private var inputTimer: Timer?
     private var clickTask: Task<Void, Never>?
+    private var keyboardTimer: Timer?
     private var pendingButtonRelease = false
-    private let macCentral = UUID(uuidString: "F7A703F6-C354-8E7E-87CB-DEC064EA3CD9")!
 
+    /// Any HOGP Report CCCD subscriber can arm the pad and receive notifies.
+    /// An exact match against one development-Mac central kept this false on
+    /// any other host, so the UI stayed on “等待 Mac 系统订阅” and gestures
+    /// never sent reports after a successful new-Mac subscribe.
     private var macInputReady: Bool {
         isRunning && dynamicPeripheral.map { WHPeripheralState($0) == 5 } == true
-            && activeReport != nil && subscribedCentrals == Set([macCentral])
+            && activeReport != nil && !subscribedCentrals.isEmpty
+    }
+
+    private var keyboardReady: Bool {
+        keyboardFeatureEnabled && macInputReady && activeKeyboardReport != nil
+            && !keyboardSubscribedCentrals.isEmpty
     }
 
     func prepareMacTouchpad() {
         guard !isRunning else { return }
-        experimentOverride = "standard128-dynamic"
+        // Default remains the accepted mini recipe. The new-Mac / no-bond
+        // package is built with WH_HOGP_ENCRYPTED; see scripts/ship-encrypted-hogp.sh.
+        #if WH_HOGP_ENCRYPTED
+        experimentOverride = "standard128-encrypted"
+        #else
+        experimentOverride = "standard128"
+        #endif
+        // Keep the accepted no-Report-ID mouse map unchanged. Keyboard, when
+        // enabled, is a separate HID service with its own keyboard-only map.
+        mouse.usesReportID = false
+        keyboard.usesReportID = false
+        keyboardFeatureFlag = keyboardFeatureEnabled
+        log.info("prepareMacTouchpad case=\(experiment) keyboardFeature=\(keyboardFeatureEnabled) usesReportID=\(mouse.usesReportID)")
         start()
     }
 
     func setInputSceneActive(_ active: Bool) {
+        // The system dictation sheet often reports inactive just as Done
+        // returns. Cancelling here dropped the keyboard send.
+        if !active && hasPendingKeyboardSend {
+            log.info("Ignoring scene inactive during pending keyboard send")
+            return
+        }
         sceneActive = active
+        if !active {
+            if let release = keyboard.cancel() { _ = submitKeyboardReport(release) }
+            stopKeyboardTimer()
+        }
+        refreshInputGate()
+        if active {
+            resumePendingType()
+            scheduleAdvertiseRetryIfNeeded()
+        }
+    }
+
+    func setInputUIBlocked(_ blocked: Bool) {
+        inputUIBlocked = blocked
+        refreshInputGate()
+        if !blocked { resumePendingType() }
+    }
+
+    func setInputPaused(_ paused: Bool) {
+        inputPausedByUser = paused
+        if paused {
+            if let release = mouse.disarm() { finishMouseRelease(release) }
+            if let release = keyboard.cancel() { _ = submitKeyboardReport(release) }
+            stopKeyboardTimer()
+        }
+        refreshInputGate()
+    }
+
+    /// Missing key means off: the composite mouse+keyboard map broke vertical/horizontal
+    /// movement on an already bonded Mac. An explicit on is kept.
+    nonisolated private static func storedKeyboardFeatureEnabled() -> Bool {
+        UserDefaults.standard.bool(forKey: "wh.keyboardFeature")
+    }
+
+    nonisolated private static func loadSelectedOutputHostID() -> UUID? {
+        guard let raw = UserDefaults.standard.string(forKey: "wh.outputHostID"), !raw.isEmpty, raw != "auto" else {
+            return nil
+        }
+        return UUID(uuidString: raw)
+    }
+
+    nonisolated private static func loadHostKindOverrides() -> [UUID: HIDHostKind] {
+        guard let dict = UserDefaults.standard.dictionary(forKey: "wh.hostKinds") as? [String: String] else {
+            return [:]
+        }
+        var out: [UUID: HIDHostKind] = [:]
+        for (key, value) in dict {
+            if let id = UUID(uuidString: key), let kind = HIDHostKind(rawValue: value) {
+                out[id] = kind
+            }
+        }
+        return out
+    }
+
+    func selectOutputHost(_ id: UUID?) {
+        selectedOutputHostID = id
+        outputIsAutomatic = (id == nil)
+        if let id {
+            UserDefaults.standard.set(id.uuidString, forKey: "wh.outputHostID")
+        } else {
+            UserDefaults.standard.removeObject(forKey: "wh.outputHostID")
+        }
+        refreshHIDHosts()
+        let mode = id == nil ? "automatic" : "manual"
+        log.info("HID output selection " + mode + " hosts=\(hidHosts.count)")
+    }
+
+    func labelHost(_ id: UUID, kind: HIDHostKind) {
+        hostKindOverrides[id] = kind
+        var stored: [String: String] = [:]
+        for (hostID, hostKind) in hostKindOverrides {
+            stored[hostID.uuidString] = hostKind.rawValue
+        }
+        UserDefaults.standard.set(stored, forKey: "wh.hostKinds")
+        refreshHIDHosts()
+        log.info("HID host labeled kind=\(kind.rawValue)")
+    }
+
+    private func knownCentrals() -> [CBCentral] {
+        var map = keyboardCentrals
+        for (id, central) in mouseCentrals {
+            map[id] = central
+        }
+        return map.values.sorted { lhs, rhs in
+            if lhs.maximumUpdateValueLength != rhs.maximumUpdateValueLength {
+                return lhs.maximumUpdateValueLength > rhs.maximumUpdateValueLength
+            }
+            return lhs.identifier.uuidString < rhs.identifier.uuidString
+        }
+    }
+
+    private func kind(for central: CBCentral, among: [CBCentral]) -> HIDHostKind {
+        if let override = hostKindOverrides[central.identifier] {
+            return override
+        }
+        guard among.count >= 2 else { return .unknown }
+        let lengths = among.map { $0.maximumUpdateValueLength }
+        guard let maxMTU = lengths.max(), let minMTU = lengths.min(), maxMTU > minMTU else {
+            return .unknown
+        }
+        if central.maximumUpdateValueLength == maxMTU { return .mac }
+        if central.maximumUpdateValueLength == minMTU { return .iPhone }
+        return .unknown
+    }
+
+    private func title(for kind: HIDHostKind, unknownIndex: Int) -> String {
+        switch kind {
+        case .mac:
+            return L10n.string("settings.output_mac")
+        case .iPhone:
+            return L10n.string("settings.output_iphone")
+        case .unknown:
+            return L10n.string("settings.output_device", unknownIndex)
+        }
+    }
+
+    private func preferredCentral(in map: [UUID: CBCentral]) -> CBCentral? {
+        if map.isEmpty { return nil }
+        if map.count == 1 { return map.values.first }
+        if let id = selectedOutputHostID, let central = map[id] {
+            return central
+        }
+        let all = Array(map.values)
+        if let mac = all.first(where: { kind(for: $0, among: all) == .mac }) {
+            return mac
+        }
+        return all.max { lhs, rhs in
+            if lhs.maximumUpdateValueLength != rhs.maximumUpdateValueLength {
+                return lhs.maximumUpdateValueLength < rhs.maximumUpdateValueLength
+            }
+            return lhs.identifier.uuidString > rhs.identifier.uuidString
+        }
+    }
+
+    private func preferredCentrals(from map: [UUID: CBCentral]) -> [CBCentral] {
+        if let central = preferredCentral(in: map) { return [central] }
+        return []
+    }
+
+    private func refreshHIDHosts() {
+        outputIsAutomatic = (selectedOutputHostID == nil)
+        let centrals = knownCentrals()
+        let preferred = preferredCentral(in: Dictionary(uniqueKeysWithValues: centrals.map { ($0.identifier, $0) }))
+        var unknownIndex = 1
+        hidHosts = centrals.map { central in
+            let hostKind = kind(for: central, among: centrals)
+            let label: String
+            if hostKind == .unknown {
+                label = title(for: hostKind, unknownIndex: unknownIndex)
+                unknownIndex += 1
+            } else {
+                label = title(for: hostKind, unknownIndex: 0)
+            }
+            let selected = selectedOutputHostID == nil
+                ? preferred?.identifier == central.identifier
+                : selectedOutputHostID == central.identifier
+            return HIDHostInfo(id: central.identifier, kind: hostKind, title: label, isSelected: selected)
+        }
+    }
+
+    /// The keyboard HID service is added only after the mouse Report is
+    /// subscribed. Turning it off leaves published services in place so the
+    /// mouse bond is not torn down. The mouse Report Map stays the accepted
+    /// no-Report-ID baseline.
+    func setKeyboardFeatureEnabled(_ enabled: Bool) {
+        guard enabled != keyboardFeatureEnabled else { return }
+        keyboardFeatureEnabled = enabled
+        keyboardFeatureFlag = enabled
+        UserDefaults.standard.set(enabled, forKey: "wh.keyboardFeature")
+        mouse.usesReportID = false
+        keyboard.usesReportID = false
+        if enabled {
+            log.info("Keyboard feature ON; adding keyboard HID after the mouse is subscribed")
+            addKeyboardHIDServiceIfNeeded()
+        } else {
+            log.info("Keyboard feature OFF; leaving published HID services so the mouse bond is not torn down")
+            if let release = keyboard.cancel() { _ = submitKeyboardReport(release) }
+            stopKeyboardTimer()
+        }
         refreshInputGate()
     }
 
     private func refreshInputGate() {
-        if let release = mouse.availability(active: sceneActive, macReady: macInputReady) {
-            finishMouseRelease(release) // completion of a preceding explicit click only
+        // Keep sceneActive vs macInputReady split (a3c9eaf). Gate arming with pause/pending only.
+        if let release = mouse.availability(active: sceneActive && !inputPausedByUser && !inputUIBlocked && !keyboard.busy, macReady: macInputReady) {
+            finishMouseRelease(release)
+        }
+        let kbActive = sceneActive && !inputPausedByUser && !inputUIBlocked && keyboardFeatureEnabled
+        if let release = keyboard.availability(active: kbActive, macReady: keyboardReady) {
+            _ = submitKeyboardReport(release)
+        }
+        if sceneActive && !inputPausedByUser && !inputUIBlocked && macInputReady && !mouse.enabled && !pendingButtonRelease {
+            _ = mouse.arm()
+        }
+        if sceneActive && !inputPausedByUser && !inputUIBlocked && keyboardFeatureEnabled && keyboardReady && !keyboard.enabled {
+            _ = keyboard.arm()
         }
         if !mouse.enabled {
             inputTimer?.invalidate(); inputTimer = nil
             clickTask?.cancel(); clickTask = nil
         }
+        if !keyboard.enabled {
+            stopKeyboardTimer()
+        }
         mouseEnabled = mouse.enabled
         mouseTouching = mouse.touching
-        inputStatus = pendingButtonRelease ? "松键待发送 · 暂停输入" : !sceneActive ? "已暂停 · 返回后重新启用" :
-            !macInputReady ? "等待 Mac 系统订阅" : mouse.enabled ? "已启用 · 拖动移动" : "Mac 已订阅 · 待启用"
+        keyboardBusy = keyboard.busy
+        if pendingButtonRelease {
+            inputStatus = L10n.string("status.pending_release")
+        } else if !sceneActive {
+            inputStatus = L10n.string("status.scene_inactive")
+        } else if inputUIBlocked {
+            inputStatus = L10n.string("status.ui_blocked")
+        } else if inputPausedByUser {
+            inputStatus = L10n.string("status.paused_by_user")
+        } else if !macInputReady {
+            inputStatus = L10n.string("status.waiting_subscription")
+        } else if mouse.enabled {
+            inputStatus = keyboardFeatureEnabled
+                ? (keyboardReady ? L10n.string("status.ready_keyboard_ok") : L10n.string("status.ready_keyboard_wait"))
+                : L10n.string("status.ready_mouse")
+        } else {
+            inputStatus = L10n.string("status.preparing")
+        }
+        retryPendingRelease()
     }
 
     func toggleMouseInput() {
-        if mouse.enabled {
-            if let release = mouse.disarm() { finishMouseRelease(release) }
-        } else if !pendingButtonRelease {
-            _ = mouse.arm()
-        }
-        refreshInputGate()
+        setInputPaused(mouse.enabled)
     }
 
     func touchpadChanged(x: Double, y: Double) {
-        guard mouse.enabled && macInputReady && sceneActive else { return }
+        guard mouse.enabled && macInputReady && sceneActive && !inputPausedByUser && !inputUIBlocked else { return }
+        let now = ProcessInfo.processInfo.systemUptime
         if !mouse.touching {
-            mouse.beginTouch(x: x, y: y)
+            mouse.beginTouch(x: x, y: y, at: now)
             let timer = Timer(timeInterval: MouseInputState.interval, repeats: true) { [weak self] _ in
                 Task { @MainActor in self?.drainTouchpad() }
             }
@@ -76,29 +344,54 @@ final class PeripheralProbe: NSObject, ObservableObject {
     }
 
     func touchpadEnded() {
-        mouse.endTouch()
+        let now = ProcessInfo.processInfo.systemUptime
+        let result = mouse.endTouch(at: now)
         mouseTouching = false
         inputTimer?.invalidate(); inputTimer = nil
+        if let flush = result.moveFlush { _ = submitMouseReport(flush) }
+        if let release = result.release { finishMouseRelease(release) }
+        switch result.outcome {
+        case .leftClick:
+            performClick(buttonMask: 0x01)
+        case .rightClick:
+            // right already sent as down during long-press; release handled above
+            break
+        case .none:
+            break
+        }
+        refreshInputGate()
     }
 
     private func drainTouchpad() {
         guard sceneActive && macInputReady && mouse.enabled else { refreshInputGate(); return }
-        if let report = mouse.frame(at: ProcessInfo.processInfo.systemUptime), !submitMouseReport(report) {
+        let now = ProcessInfo.processInfo.systemUptime
+        if let right = mouse.pollLongPress(at: now) {
+            if !submitMouseReport(right) {
+                _ = mouse.disarm()
+                refreshInputGate()
+                inputStatus = L10n.string("status.send_busy")
+                return
+            }
+        }
+        if let report = mouse.frame(at: now), !submitMouseReport(report) {
             _ = mouse.disarm()
             refreshInputGate()
-            inputStatus = "发送忙 · 请重新启用"
+            inputStatus = L10n.string("status.send_busy")
         }
     }
 
-    func explicitLeftClick() {
-        guard sceneActive && macInputReady && !pendingButtonRelease, let down = mouse.pressClick() else { return }
+    func explicitLeftClick() { performClick(buttonMask: 0x01) }
+
+    private func performClick(buttonMask: UInt8) {
+        guard sceneActive && macInputReady && !pendingButtonRelease,
+              let down = mouse.pressClick(buttonMask: buttonMask) else { return }
         guard submitMouseReport(down) else {
             _ = mouse.disarm(); refreshInputGate(); return
         }
         clickTask = Task { @MainActor [weak self] in
             do { try await Task.sleep(for: .milliseconds(80)) } catch { return }
             guard let self else { return }
-            if let up = self.mouse.releaseClick() {
+            if let up = self.mouse.releaseButtons() {
                 self.finishMouseRelease(up)
                 if self.pendingButtonRelease { _ = self.mouse.disarm(); self.refreshInputGate() }
             }
@@ -113,7 +406,8 @@ final class PeripheralProbe: NSObject, ObservableObject {
 
     private func retryPendingRelease() {
         guard pendingButtonRelease else { return }
-        if submitMouseReport(Data([0, 0, 0, 0])) {
+        let neutral = mouse.usesReportID ? Data([1, 0, 0, 0, 0]) : Data([0, 0, 0, 0])
+        if submitMouseReport(neutral) {
             pendingButtonRelease = false
             refreshInputGate()
         }
@@ -121,9 +415,190 @@ final class PeripheralProbe: NSObject, ObservableObject {
 
     private func submitMouseReport(_ data: Data) -> Bool {
         guard let peripheral = dynamicPeripheral, let report = activeReport,
-              subscribedCentrals == Set([macCentral]) else { return false }
-        return WHUpdateReport(peripheral, data, report)
+              !subscribedCentrals.isEmpty else {
+            log.warn("Mouse notify skipped ready=" + String(macInputReady) + " subs=\(subscribedCentrals.count) bytes=\(data.count)")
+            return false
+        }
+        let targets = preferredCentrals(from: mouseCentrals)
+        guard !targets.isEmpty else {
+            log.warn("Mouse notify skipped; no preferred host subs=\(subscribedCentrals.count)")
+            return false
+        }
+        let ok = WHUpdateReportToCentrals(peripheral, data, report, targets as [Any])
+        let interesting = data.count >= 4 && (data[data.count - 4] != 0 || data[data.count - 3] != 0 || data[data.count - 2] != 0)
+        let now = ProcessInfo.processInfo.systemUptime
+        if !ok {
+            log.warn("Mouse notify REJECTED bytes=\(data.count) targets=\(targets.count)")
+        } else if interesting && now - lastMouseNotifyLog >= 1.0 {
+            lastMouseNotifyLog = now
+            log.info("Mouse notify accepted bytes=\(data.count) b0=\(data[0]) targets=\(targets.count)")
+        }
+        return ok
     }
+
+    private func submitKeyboardReport(_ data: Data) -> Bool {
+        guard keyboardFeatureEnabled,
+              let peripheral = dynamicPeripheral, let report = activeKeyboardReport,
+              !keyboardSubscribedCentrals.isEmpty else { return false }
+        let targets = preferredCentrals(from: keyboardCentrals)
+        guard !targets.isEmpty else { return false }
+        return WHUpdateReportToCentrals(peripheral, data, report, targets as [Any])
+    }
+
+    /// Type typable US-ASCII into the Mac. Logs length/skipped — never plaintext.
+    func typeReviewedASCII(_ text: String) {
+        guard keyboardFeatureEnabled else {
+            lastTypeStatus = L10n.string("type.keyboard_off")
+            return
+        }
+        let asciiCount = text.unicodeScalars.filter { $0.isASCII }.count
+        let nonASCII = text.unicodeScalars.count - asciiCount
+        let typable = text.unicodeScalars.filter { $0.isASCII && KeyboardInputState.mapASCII(UInt8($0.value)) != nil }.count
+        guard typable > 0 else {
+            lastTypeStatus = L10n.string("type.no_ascii")
+            log.info("Type skipped; no typable ASCII asciiCount=\(asciiCount) nonASCII=\(nonASCII)")
+            return
+        }
+        guard keyboardReady, keyboard.enabled else {
+            lastTypeStatus = L10n.string("type.keyboard_not_ready")
+            return
+        }
+        guard keyboard.enqueueASCII(text) else {
+            lastTypeStatus = keyboard.busy ? L10n.string("type.keyboard_busy") : L10n.string("type.cannot_queue")
+            log.warn("Type refused busy=\(keyboard.busy) asciiChars=\(asciiCount) nonASCII=\(nonASCII)")
+            return
+        }
+        lastTypeStatus = nonASCII > 0
+            ? L10n.string("type.sending_skipped", asciiCount, nonASCII)
+            : L10n.string("type.sending", asciiCount)
+        log.info("Type queued ascii=\(asciiCount) skippedNonASCII=\(nonASCII) skippedUnsupported=\(keyboard.skippedUnsupported)")
+        startKeyboardTimer()
+        keyboardBusy = true
+    }
+
+    /// After system dictation returns, type into the Mac without showing the text on the Watch.
+    func acceptDictation(_ text: String) {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        let ascii = trimmed.unicodeScalars.filter { $0.isASCII }.count
+        log.info("Dictation captured chars=\(trimmed.count) ascii=\(ascii) (auto-type; text not shown)")
+        // The system sheet may still be tearing down. Keep the keyboard path
+        // armed and retry until the host resubscribes or we time out.
+        inputUIBlocked = false
+        sceneActive = true
+        pendingTypeText = trimmed
+        startTypeRetryLoop(attempts: 40)
+    }
+
+    private var hasPendingKeyboardSend: Bool { pendingTypeText != nil || keyboard.busy }
+
+    private func resumePendingType() {
+        guard pendingTypeText != nil, typeRetryTask == nil else { return }
+        startTypeRetryLoop(attempts: 40)
+    }
+
+    private func startTypeRetryLoop(attempts: Int) {
+        typeRetryTask?.cancel()
+        typeRetryTask = Task { @MainActor [weak self] in
+            guard let self else { return }
+            for remaining in stride(from: attempts, through: 1, by: -1) {
+                if Task.isCancelled { return }
+                if self.trySendPendingType() {
+                    self.typeRetryTask = nil
+                    return
+                }
+                if remaining == 40 || remaining % 8 == 0 {
+                    self.log.info("Type wait remaining=\(remaining) ready=\(self.keyboardReady) scene=\(self.sceneActive) blocked=\(self.inputUIBlocked) kbSubs=\(self.keyboardSubscribedCentrals.count) mouseSubs=\(self.subscribedCentrals.count)")
+                }
+                try? await Task.sleep(for: .milliseconds(250))
+            }
+            if self.pendingTypeText != nil {
+                self.lastTypeStatus = L10n.string("type.keyboard_not_ready")
+                self.log.warn("Type gave up ready=\(self.keyboardReady) feature=\(self.keyboardFeatureEnabled) scene=\(self.sceneActive) blocked=\(self.inputUIBlocked) kbSubs=\(self.keyboardSubscribedCentrals.count) mouseSubs=\(self.subscribedCentrals.count)")
+                self.pendingTypeText = nil
+            }
+            self.typeRetryTask = nil
+        }
+    }
+
+    /// Returns true when the pending text is queued, skipped, or abandoned as a terminal state.
+    private func trySendPendingType() -> Bool {
+        guard let text = pendingTypeText else { return true }
+        guard keyboardFeatureEnabled else {
+            lastTypeStatus = L10n.string("type.keyboard_off")
+            pendingTypeText = nil
+            return true
+        }
+        refreshInputGate()
+        if keyboardReady && !keyboard.enabled {
+            _ = keyboard.arm()
+            refreshInputGate()
+        }
+        guard keyboardReady && keyboard.enabled else { return false }
+        typeReviewedASCII(text)
+        if keyboard.busy {
+            pendingTypeText = nil
+            return true
+        }
+        let typable = text.unicodeScalars.contains { $0.isASCII && KeyboardInputState.mapASCII(UInt8($0.value)) != nil }
+        if !typable {
+            pendingTypeText = nil
+            return true
+        }
+        return false
+    }
+
+    func cancelTyping() {
+        typeRetryTask?.cancel()
+        typeRetryTask = nil
+        pendingTypeText = nil
+        cancelAdvertiseRetry()
+        if let release = keyboard.cancel() { _ = submitKeyboardReport(release) }
+        stopKeyboardTimer()
+        lastTypeStatus = L10n.string("type.cancelled")
+        refreshInputGate()
+    }
+
+    private func startKeyboardTimer() {
+        stopKeyboardTimer()
+        let timer = Timer(timeInterval: KeyboardInputState.interval, repeats: true) { [weak self] _ in
+            Task { @MainActor in self?.drainKeyboard() }
+        }
+        keyboardTimer = timer
+        RunLoop.main.add(timer, forMode: .common)
+    }
+
+    private func stopKeyboardTimer() {
+        keyboardTimer?.invalidate()
+        keyboardTimer = nil
+    }
+
+    private func drainKeyboard() {
+        guard sceneActive && keyboardReady && keyboard.enabled else {
+            if let release = keyboard.cancel() { _ = submitKeyboardReport(release) }
+            stopKeyboardTimer()
+            refreshInputGate()
+            return
+        }
+        let now = ProcessInfo.processInfo.systemUptime
+        if let step = keyboard.step(at: now) {
+            if !submitKeyboardReport(step) {
+                if let release = keyboard.cancel() { _ = submitKeyboardReport(release) }
+                stopKeyboardTimer()
+                lastTypeStatus = L10n.string("type.send_busy_stopped")
+                refreshInputGate()
+                return
+            }
+        }
+        if !keyboard.busy {
+            stopKeyboardTimer()
+            lastTypeStatus = L10n.string("type.send_complete", keyboard.skippedUnsupported)
+            refreshInputGate()
+        } else {
+            keyboardBusy = true
+        }
+    }
+
 
     private var customServiceUUID: String {
         experiment.hasPrefix("custom-fresh") ? "A7B10001-7E42-4C63-9D17-B5A0F055C903" : experiment == "custom-hidshape-v2" ? "A7B10001-7E42-4C63-9D17-B5A0F055C902" : "A7B10001-7E42-4C63-9D17-B5A0F055C901"
@@ -210,8 +685,13 @@ final class PeripheralProbe: NSObject, ObservableObject {
         isRunning = true
         advertisingConfirmed = false
         subscribedCentrals.removeAll()
+        mouseCentrals.removeAll()
+        keyboardCentrals.removeAll()
         reportSubscriberCount = 0
         activeReport = nil
+        activeKeyboardReport = nil
+        keyboardSubscribedCentrals.removeAll()
+        refreshHIDHosts()
         statusSummary = "Starting…"
         addedServiceCount = 0
         expectedServiceCount = 0
@@ -223,8 +703,10 @@ final class PeripheralProbe: NSObject, ObservableObject {
 
     func stop() {
         if let release = mouse.disarm() { finishMouseRelease(release) }
+        if let release = keyboard.cancel() { _ = submitKeyboardReport(release) }
         inputTimer?.invalidate(); inputTimer = nil
         clickTask?.cancel(); clickTask = nil
+        stopKeyboardTimer()
         if let dyn = dynamicPeripheral {
             WHStopAdvertising(dyn)
             WHRemoveAllServices(dyn)
@@ -233,8 +715,18 @@ final class PeripheralProbe: NSObject, ObservableObject {
         pendingServiceObjects = []
         isRunning = false
         subscribedCentrals.removeAll()
+        mouseCentrals.removeAll()
+        keyboardCentrals.removeAll()
         reportSubscriberCount = 0
         activeReport = nil
+        activeKeyboardReport = nil
+        keyboardHIDServiceObject = nil
+        keyboardReportObject = nil
+        keyboardSubscribedCentrals.removeAll()
+        refreshHIDHosts()
+        typeRetryTask?.cancel()
+        typeRetryTask = nil
+        pendingTypeText = nil
         statusSummary = "Stopped"
         refreshInputGate()
         log.step("Probe stopped")
@@ -245,17 +737,41 @@ final class PeripheralProbe: NSObject, ObservableObject {
             log.warn("Mouse test requires an actual Report subscriber")
             return
         }
+        let targets = preferredCentrals(from: mouseCentrals)
+        guard !targets.isEmpty else {
+            log.warn("Mouse test requires a preferred Report subscriber")
+            return
+        }
         if !click {
-            let accepted = WHUpdateReport(peripheral, Data([0, 20, 0, 0]), report)
-            log.info("User-requested relative X=20 report queued=\(accepted)")
+            let accepted = WHUpdateReportToCentrals(peripheral, Data([0, 20, 0, 0]), report, targets as [Any])
+            log.info("User-requested relative X=20 report queued=\(accepted) targets=\(targets.count)")
         } else {
             Task { @MainActor in
-                let down = WHUpdateReport(peripheral, Data([1, 0, 0, 0]), report)
+                let down = WHUpdateReportToCentrals(peripheral, Data([1, 0, 0, 0]), report, targets as [Any])
                 try? await Task.sleep(nanoseconds: 80_000_000)
-                let up = WHUpdateReport(peripheral, Data([0, 0, 0, 0]), report)
+                let up = WHUpdateReportToCentrals(peripheral, Data([0, 0, 0, 0]), report, targets as [Any])
                 self.log.info("User-requested click reports queued down=\(down) up=\(up)")
             }
         }
+    }
+
+
+
+    nonisolated private func isKeyboardReportCharacteristic(_ characteristic: CBCharacteristic) -> Bool {
+        if let stored = keyboardReportObject, characteristic as AnyObject === stored {
+            return true
+        }
+        if let service = characteristic.service, let stored = keyboardHIDServiceObject, service as AnyObject === stored {
+            return true
+        }
+        return false
+    }
+
+    nonisolated private func isKeyboardHIDCharacteristic(_ characteristic: CBCharacteristic) -> Bool {
+        if let service = characteristic.service, let stored = keyboardHIDServiceObject, service as AnyObject === stored {
+            return true
+        }
+        return isKeyboardReportCharacteristic(characteristic)
     }
 
     private func createViaDynamicFactory() {
@@ -380,7 +896,15 @@ final class PeripheralProbe: NSObject, ObservableObject {
             return
         }
 
+        keyboardHIDServiceObject = nil
+        keyboardReportObject = nil
+        // Publish the accepted mouse-only HID layout first. A second 1812
+        // keyboard service is added only after the Mac subscribes to the mouse
+        // Report, so a process restart does not change the bonded map up front.
         pendingServiceObjects = [hid, battery, info]
+        if keyboardFeatureEnabled {
+            log.info("Keyboard feature on; will add keyboard HID after mouse Report is subscribed")
+        }
         expectedServiceCount = pendingServiceObjects.count
         addedServiceCount = 0
 
@@ -416,7 +940,7 @@ final class PeripheralProbe: NSObject, ObservableObject {
         let reportMap = WHCreateMutableCharacteristic(
             hogpUUID(short: HIDDescriptors.UUID16.reportMap, full: HIDDescriptors.UUID128.reportMap),
             propRead,
-            dynamicValues ? nil : Data(HIDDescriptors.mouseReportMap),
+            dynamicValues ? nil : HIDMetadata.value(for: "2A4B"),
             secureHID ? 0x04 : permReadable
         )
         let report = WHCreateMutableCharacteristic(
@@ -428,7 +952,7 @@ final class PeripheralProbe: NSObject, ObservableObject {
         if let report {
             if let reportRef = WHCreateMutableDescriptor(
                 hogpUUID(short: HIDDescriptors.UUID16.reportReference, full: HIDDescriptors.UUID128.reportReference),
-                Data([0x00, 0x01])
+                Data(HIDDescriptors.mouseReportReference)
             ) {
                 WHSetDescriptors(report, [reportRef])
             }
@@ -436,7 +960,7 @@ final class PeripheralProbe: NSObject, ObservableObject {
         let hidInfo = WHCreateMutableCharacteristic(
             hogpUUID(short: HIDDescriptors.UUID16.hidInformation, full: HIDDescriptors.UUID128.hidInformation),
             propRead,
-            dynamicValues ? nil : Data(HIDDescriptors.hidInformation),
+            dynamicValues ? nil : HIDMetadata.value(for: "2A4A"),
             secureHID ? 0x04 : permReadable
         )
         // HOGP: Control Point is Write Without Response (keep spec; do not copy darwin .read-only anomaly).
@@ -466,6 +990,52 @@ final class PeripheralProbe: NSObject, ObservableObject {
         return service
     }
 
+    /// Separate HOGP service for the boot keyboard. Does not change the mouse Report Map.
+    private func buildKeyboardHIDService(uuidOverride: String? = nil) -> NSObject? {
+        guard let service = WHCreateMutableService(uuidOverride ?? HIDDescriptors.UUID16.hidService, true) as? NSObject else { return nil }
+        let protocolMode = WHCreateMutableCharacteristic(
+            hogpUUID(short: HIDDescriptors.UUID16.protocolMode, full: HIDDescriptors.UUID128.protocolMode),
+            propRead | propWriteWithoutResponse,
+            nil,
+            secureHID ? (0x04 | 0x08) : (permReadable | permWriteable)
+        )
+        let reportMap = WHCreateMutableCharacteristic(
+            hogpUUID(short: HIDDescriptors.UUID16.reportMap, full: HIDDescriptors.UUID128.reportMap),
+            propRead,
+            dynamicValues ? nil : HIDMetadata.value(for: "2A4B", keyboardEnabled: true),
+            secureHID ? 0x04 : permReadable
+        )
+        let report = WHCreateMutableCharacteristic(
+            hogpUUID(short: HIDDescriptors.UUID16.report, full: HIDDescriptors.UUID128.report),
+            propRead | propNotify | (secureHID ? 0x100 : 0),
+            nil,
+            secureHID ? 0x04 : permReadable
+        ) as? NSObject
+        if let report {
+            if let reportRef = WHCreateMutableDescriptor(
+                hogpUUID(short: HIDDescriptors.UUID16.reportReference, full: HIDDescriptors.UUID128.reportReference),
+                Data(HIDDescriptors.keyboardReportReferenceNoID)
+            ) {
+                WHSetDescriptors(report, [reportRef])
+            }
+            keyboardReportObject = report
+        }
+        let hidInfo = WHCreateMutableCharacteristic(
+            hogpUUID(short: HIDDescriptors.UUID16.hidInformation, full: HIDDescriptors.UUID128.hidInformation),
+            propRead,
+            dynamicValues ? nil : HIDMetadata.value(for: "2A4A"),
+            secureHID ? 0x04 : permReadable
+        )
+        let controlPoint = WHCreateMutableCharacteristic(
+            hogpUUID(short: HIDDescriptors.UUID16.hidControlPoint, full: HIDDescriptors.UUID128.hidControlPoint),
+            propWriteWithoutResponse,
+            nil,
+            secureHID ? 0x08 : permWriteable
+        )
+        WHSetCharacteristics(service, [protocolMode, reportMap, report, hidInfo, controlPoint].compactMap { $0 })
+        return service
+    }
+
     private func buildBatteryService(uuidOverride: String? = nil) -> NSObject? {
         guard let service = WHCreateMutableService(uuidOverride ?? HIDDescriptors.UUID16.batteryService, true) as? NSObject else { return nil }
         let batProps: UInt = propRead | propNotify | (hogpV1 ? 0x100 : 0)
@@ -486,23 +1056,69 @@ final class PeripheralProbe: NSObject, ObservableObject {
         let manufacturer = WHCreateMutableCharacteristic(
             hogpUUID(short: HIDDescriptors.UUID16.manufacturerName, full: HIDDescriptors.UUID128.manufacturerName),
             propRead,
-            dynamicValues ? nil : Data("WatchHID".utf8),
+            dynamicValues ? nil : HIDMetadata.value(for: "2A29"),
             permReadable
         )
         let model = WHCreateMutableCharacteristic(
             hogpUUID(short: HIDDescriptors.UUID16.modelNumber, full: HIDDescriptors.UUID128.modelNumber),
             propRead,
-            dynamicValues ? nil : Data("Ultra2-R1".utf8),
+            dynamicValues ? nil : HIDMetadata.value(for: "2A24"),
             permReadable
         )
         let pnp = WHCreateMutableCharacteristic(
             hogpUUID(short: HIDDescriptors.UUID16.pnpID, full: HIDDescriptors.UUID128.pnpID),
             propRead,
-            dynamicValues ? nil : pnpIDBytes,
+            dynamicValues ? nil : HIDMetadata.value(for: "2A50", pnpID: pnpIDBytes),
             permReadable
         )
         WHSetCharacteristics(service, [manufacturer, model, pnp].compactMap { $0 })
         return service
+    }
+
+    /// Add the keyboard HID service only after the mouse Report has a subscriber.
+    private func addKeyboardHIDServiceIfNeeded() {
+        guard keyboardFeatureEnabled, isRunning, keyboardHIDServiceObject == nil,
+              macInputReady, let dyn = dynamicPeripheral else { return }
+        let expanded = experiment.hasPrefix("standard128")
+        guard let keyboardHID = buildKeyboardHIDService(uuidOverride: expanded ? "00001812-0000-1000-8000-00805F9B34FB" : nil) else {
+            log.error("Failed to construct keyboard HID service")
+            return
+        }
+        keyboardHIDServiceObject = keyboardHID
+        expectedServiceCount = addedServiceCount + 1
+        log.info("Adding separate keyboard HID service after mouse subscribe; mouse Report Map unchanged")
+        if let exception = WHAddServiceChecked(dyn, keyboardHID) {
+            log.error("addService keyboard exception: \(exception)")
+            keyboardHIDServiceObject = nil
+            keyboardReportObject = nil
+        }
+    }
+
+    private func scheduleAdvertiseRetryIfNeeded() {
+        guard isRunning, subscribedCentrals.isEmpty, sceneActive else { return }
+        guard advertiseRetryTask == nil else { return }
+        advertiseRetryTask = Task { @MainActor [weak self] in
+            guard let self else { return }
+            for attempt in 1...6 {
+                try? await Task.sleep(for: .seconds(3))
+                if Task.isCancelled { return }
+                guard self.isRunning, self.subscribedCentrals.isEmpty else {
+                    self.advertiseRetryTask = nil
+                    return
+                }
+                self.log.info("No mouse Report subscriber; restarting advertising attempt=\(attempt)")
+                if let dyn = self.dynamicPeripheral {
+                    WHStopAdvertising(dyn)
+                    self.startAdvertising()
+                }
+            }
+            self.advertiseRetryTask = nil
+        }
+    }
+
+    private func cancelAdvertiseRetry() {
+        advertiseRetryTask?.cancel()
+        advertiseRetryTask = nil
     }
 
     private func startAdvertising() {
@@ -540,7 +1156,7 @@ extension PeripheralProbe: CBPeripheralManagerDelegate {
         if uuid == CBUUID(string: HIDDescriptors.UUID16.protocolMode) {
             value = Data([1])
         } else if uuid == CBUUID(string: HIDDescriptors.UUID16.reportMap) {
-            value = Data(HIDDescriptors.mouseReportMap)
+            value = Data(isKeyboardHIDCharacteristic(request.characteristic) ? HIDDescriptors.keyboardReportMap : HIDDescriptors.mouseReportMap)
         } else if uuid == CBUUID(string: HIDDescriptors.UUID16.hidInformation) {
             value = Data(HIDDescriptors.hidInformation)
         } else if uuid == CBUUID(string: HIDDescriptors.UUID16.manufacturerName) {
@@ -556,7 +1172,9 @@ extension PeripheralProbe: CBPeripheralManagerDelegate {
             value = Data([1])
         } else if uuid == CBUUID(string: HIDDescriptors.UUID16.report)
                     || uuid == CBUUID(string: HIDDescriptors.UUID128.report) {
-            value = Data([0, 0, 0, 0])
+            value = isKeyboardHIDCharacteristic(request.characteristic)
+                ? Data([0, 0, 0, 0, 0, 0, 0, 0])
+                : Data([0, 0, 0, 0])
         } else if uuid == CBUUID(string: HIDDescriptors.UUID16.bootMouseInputReport)
                     || uuid == CBUUID(string: HIDDescriptors.UUID128.bootMouseInputReport) {
             value = Data([0, 0, 0]) // USB HID boot mouse: buttons, X, Y
@@ -619,12 +1237,24 @@ extension PeripheralProbe: CBPeripheralManagerDelegate {
         Task { @MainActor in
             self.log.info("ATT subscribed \(characteristic.uuid) central=\(central.identifier)")
             if characteristic.uuid == CBUUID(string: HIDDescriptors.UUID16.report) {
-                self.subscribedCentrals.insert(central.identifier)
-                self.reportSubscriberCount = self.subscribedCentrals.count
-                self.activeReport = characteristic
-                self.retryPendingRelease()
+                if self.isKeyboardReportCharacteristic(characteristic) {
+                    self.keyboardSubscribedCentrals.insert(central.identifier)
+                    self.keyboardCentrals[central.identifier] = central
+                    self.activeKeyboardReport = characteristic
+                    self.log.info("Keyboard Report subscribed central=\(central.identifier)")
+                } else {
+                    self.subscribedCentrals.insert(central.identifier)
+                    self.mouseCentrals[central.identifier] = central
+                    self.reportSubscriberCount = self.subscribedCentrals.count
+                    self.activeReport = characteristic
+                    self.retryPendingRelease()
+                    self.cancelAdvertiseRetry()
+                    self.log.info("Input gate updated; no new input, except completing a pending explicit click release")
+                    self.addKeyboardHIDServiceIfNeeded()
+                }
+                self.refreshHIDHosts()
                 self.refreshInputGate()
-                self.log.info("Input gate updated; no new input, except completing a pending explicit click release")
+                self.resumePendingType()
             }
         }
     }
@@ -632,11 +1262,20 @@ extension PeripheralProbe: CBPeripheralManagerDelegate {
     nonisolated func peripheralManager(_ peripheral: CBPeripheralManager, central: CBCentral, didUnsubscribeFrom characteristic: CBCharacteristic) {
         Task { @MainActor in
             guard characteristic.uuid == CBUUID(string: HIDDescriptors.UUID16.report) else { return }
-            self.subscribedCentrals.remove(central.identifier)
-            self.reportSubscriberCount = self.subscribedCentrals.count
-            if self.subscribedCentrals.isEmpty { self.activeReport = nil }
+            if self.isKeyboardReportCharacteristic(characteristic) || self.activeKeyboardReport as AnyObject? === characteristic as AnyObject {
+                self.keyboardSubscribedCentrals.remove(central.identifier)
+                self.keyboardCentrals.removeValue(forKey: central.identifier)
+                if self.keyboardSubscribedCentrals.isEmpty { self.activeKeyboardReport = nil }
+                self.log.info("Keyboard Report unsubscribed central=\(central.identifier)")
+            } else {
+                self.subscribedCentrals.remove(central.identifier)
+                self.mouseCentrals.removeValue(forKey: central.identifier)
+                self.reportSubscriberCount = self.subscribedCentrals.count
+                if self.subscribedCentrals.isEmpty { self.activeReport = nil }
+                self.log.info("ATT unsubscribed \(characteristic.uuid) central=\(central.identifier)")
+            }
+            self.refreshHIDHosts()
             self.refreshInputGate()
-            self.log.info("ATT unsubscribed \(characteristic.uuid) central=\(central.identifier)")
         }
     }
 
@@ -650,7 +1289,14 @@ extension PeripheralProbe: CBPeripheralManagerDelegate {
     }
 
     nonisolated func peripheralManagerIsReady(toUpdateSubscribers peripheral: CBPeripheralManager) {
-        Task { @MainActor in self.retryPendingRelease() }
+        Task { @MainActor in
+            self.retryPendingRelease()
+            if self.keyboard.busy {
+                self.drainKeyboard()
+            } else {
+                self.resumePendingType()
+            }
+        }
     }
 
     nonisolated func peripheralManager(_ peripheral: CBPeripheralManager, didAdd service: CBService, error: Error?) {
@@ -678,6 +1324,7 @@ extension PeripheralProbe: CBPeripheralManagerDelegate {
                 self.advertisingConfirmed = peripheral.isAdvertising
                 self.log.info("didStartAdvertising OK — isAdvertising=\(peripheral.isAdvertising)")
                 self.statusSummary = peripheral.isAdvertising ? "Advertising: Watch Mouse" : "Advertise OK but isAdvertising=false"
+                self.scheduleAdvertiseRetryIfNeeded()
             }
             if let waiter = self.restorationWaiter {
                 self.restorationWaiter = nil

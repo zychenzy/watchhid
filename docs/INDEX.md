@@ -1,20 +1,21 @@
-# Docs index
+# Docs
 
-Human-readable experiment notes only. **Do not commit** raw `build/diagnostics/**` logs, screenshots, crash `.ips`, sysdiagnose archives, or embedded provisioning profiles.
+Start here:
 
 | Doc | Topic |
 |---|---|
-| [mac-touchpad-mvp.md](mac-touchpad-mvp.md) | Mac BLE touchpad MVP install + owner-acceptance boundary |
-| [r5-att242-causal-audit.md](r5-att242-causal-audit.md) | ATT242 causal audit; callback observation vs availability |
-| [r5-client-audit.md](r5-client-audit.md) | iPhone client audit notes |
-| [r5-independent-root-audit.md](r5-independent-root-audit.md) | SDK unavailable / dual DIS / methodology |
-| [r4-system-discovery.md](r4-system-discovery.md) | System discovery / matrix history |
-| [r2-r3-results.md](r2-r3-results.md) | Earlier R2/R3 results |
-| [r1-matrix-results.md](r1-matrix-results.md) / [r1-local-repair.md](r1-local-repair.md) | R1 matrix / local repair |
-| [iphone-vs-mac-hid.md](iphone-vs-mac-hid.md) | iPhone vs Mac HID contrast |
-| [hogp-ios-audit.md](hogp-ios-audit.md) | HOGP layout notes |
-| [diag-channels-inventory.md](diag-channels-inventory.md) | Diagnostic channel inventory |
-| [rea-note.md](rea-note.md) | External REA reference note |
+| [setup.md](setup.md) | New Mac and any Apple Watch: Xcode, signing, WWDR G3, install, and first HOGP bond |
+| [usage.md](usage.md) | Touchpad, clicks, and dictation after the app is installed |
+| [troubleshooting.md](troubleshooting.md) | Failure modes, and what not to do |
+| [../.cursor/skills/watchhid-new-mac-hogp/SKILL.md](../.cursor/skills/watchhid-new-mac-hogp/SKILL.md) | Short reusable procedure for the same path |
 
-Device UDIDs / Apple ID email in older notes are redacted to placeholders for git. Working local IDs live only in gitignored `Config/local_devices.env`.
-| [REPO_PUSH_PLAN.md](REPO_PUSH_PLAN.md) | GitHub private push wait-state; no create from agent |
+Evidence and deeper notes:
+
+| Doc | Topic |
+|---|---|
+| [evidence/new-mac-hogp-2026-11-10.md](evidence/new-mac-hogp-2026-11-10.md) | Confirmed events on a second Mac on 2026-11-10 (Asia/Shanghai) |
+| [SIMULATOR-CHECKS.md](SIMULATOR-CHECKS.md) | Simulator UI and text-input callbacks; not BLE or speech |
+| [large-pad-dictation-en.md](large-pad-dictation-en.md) | Feature-branch intent for the large pad and optional English HID |
+| [research/](research/) | Earlier experiment notes and audits |
+
+Do not commit raw `build/diagnostics/**` logs, screenshots, crash files, sysdiagnose archives, or provisioning profiles. Working device IDs live only in gitignored `Config/local_devices.env`.

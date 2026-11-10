@@ -27,54 +27,94 @@ struct ContentView: View {
     @EnvironmentObject private var probe: PeripheralProbe
     @EnvironmentObject private var logStore: LogStore
     @EnvironmentObject private var phoneBridge: PhoneBridge
+    @State private var showSettings = false
+    @State private var dictationPresented = false
+    #if targetEnvironment(simulator)
+    @State private var simulatorCheckRan = false
+    #endif
+    private var inputOverlayVisible: Bool { showSettings || dictationPresented }
 
     var body: some View {
-        VStack(spacing: 5) {
-            HStack {
-                Text("Mac 触控板").font(.caption.bold())
-                Spacer()
-                Circle().fill(probe.mouseEnabled ? Color.green : Color.gray).frame(width: 7, height: 7)
-            }
-            Text(probe.inputStatus)
-                .font(.system(size: 10)).lineLimit(1).minimumScaleFactor(0.65)
-            Button(probe.mouseEnabled ? "停用输入" : "启用输入") {
-                probe.toggleMouseInput()
-            }
-            .font(.caption2.bold())
-            .buttonStyle(.bordered).tint(probe.mouseEnabled ? .orange : .green)
-            .accessibilityIdentifier("mouse-enable")
-
-            RoundedRectangle(cornerRadius: 14)
-                .fill(probe.mouseEnabled ? Color.blue.opacity(0.28) : Color.gray.opacity(0.15))
-                .overlay {
-                    VStack(spacing: 3) {
-                        Image(systemName: probe.mouseTouching ? "hand.draw.fill" : "hand.draw")
-                        Text(probe.mouseEnabled ? "拖动移动 · 抬指停止" : "先启用，再拖动")
-                            .font(.system(size: 11))
-                    }
-                    .allowsHitTesting(false)
-                }
-                .frame(maxWidth: .infinity, minHeight: 75, maxHeight: .infinity)
-                .contentShape(RoundedRectangle(cornerRadius: 14))
-                .gesture(DragGesture(minimumDistance: 0)
-                    .onChanged { value in
-                        probe.touchpadChanged(x: Double(value.location.x), y: Double(value.location.y))
-                    }
-                    .onEnded { _ in probe.touchpadEnded() })
-                .accessibilityLabel("鼠标移动触控板")
+        ZStack {
+            Rectangle()
+                .fill(probe.mouseEnabled
+                      ? Color(red: 0.01, green: 0.025, blue: 0.07)
+                      : Color(red: 0.03, green: 0.03, blue: 0.035))
+                .ignoresSafeArea()
+                .contentShape(Rectangle())
+                .gesture(
+                    DragGesture(minimumDistance: 0)
+                        .onChanged { value in
+                            probe.touchpadChanged(x: Double(value.location.x), y: Double(value.location.y))
+                        }
+                        .onEnded { _ in probe.touchpadEnded() }
+                )
+                .accessibilityLabel(L10n.string("pad.a11y"))
                 .accessibilityIdentifier("mouse-touchpad")
 
-            Button { probe.explicitLeftClick() } label: {
-                Label("左键单击", systemImage: "cursorarrow.click")
-                    .font(.caption2.bold()).frame(maxWidth: .infinity, minHeight: 25)
+            VStack(spacing: 0) {
+                HStack(spacing: 6) {
+                    Button { showSettings = true } label: {
+                        Image(systemName: "ellipsis.circle")
+                            .font(.caption)
+                            .foregroundStyle(.white)
+                            .frame(width: 28, height: 28)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("pad-settings")
+                    Circle()
+                        .fill(probe.mouseEnabled ? Color.green : Color.gray)
+                        .frame(width: 7, height: 7)
+                    Text(probe.inputStatus)
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(.white.opacity(0.9))
+                        .lineLimit(1)
+                        .allowsHitTesting(false)
+                    Spacer(minLength: 0)
+                }
+                .padding(.leading, 6)
+                // Keep the original height, in line with the system time.
+                // Leave the top-right corner clear for the clock.
+                .padding(.trailing, 52)
+                .padding(.top, 16)
+
+                Spacer(minLength: 0)
+                    .allowsHitTesting(false)
+
+                if !probe.lastTypeStatus.isEmpty {
+                    Text(probe.lastTypeStatus)
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundStyle(.white.opacity(0.75))
+                        .lineLimit(1)
+                        .padding(.bottom, 4)
+                        .allowsHitTesting(false)
+                }
+
+                Button(action: {}) {
+                    Image(systemName: dictationButtonImage)
+                        .font(.title3.weight(.semibold))
+                        .foregroundStyle(.white)
+                        .frame(width: 44, height: 44)
+                        .background(Circle().fill(probe.keyboardBusy ? Color.red : Color.orange))
+                }
+                .buttonStyle(.plain)
+                .contentShape(Circle())
+                // The full-screen pad uses a zero-distance drag, which otherwise
+                // wins the touch and turns a mic tap into a mouse click.
+                // Handle the press only here so it does not fire twice.
+                .highPriorityGesture(TapGesture().onEnded { handleDictationTap() })
+                .disabled(dictationPresented && !probe.keyboardBusy)
+                .accessibilityLabel(dictationButtonTitle)
+                .accessibilityIdentifier(probe.keyboardBusy ? "dictation-cancel" : "dictation-button")
+                .accessibilityHint(probe.keyboardBusy ? L10n.string("dictation.cancel_hint") : L10n.string("dictation.hint"))
+                .padding(.bottom, 2)
             }
-            .buttonStyle(.bordered).tint(.blue)
-            .disabled(!probe.mouseEnabled || probe.mouseTouching)
-            .accessibilityIdentifier("mouse-left-click")
-            Text("仅前台可用 · 熄屏后重新启用")
-                .font(.system(size: 9)).foregroundStyle(.secondary)
         }
-        .padding(.horizontal, 7)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .ignoresSafeArea()
+        .onAppear { probe.setInputSceneActive(scenePhase == .active) }
+        .onChange(of: inputOverlayVisible) { _, blocked in probe.setInputUIBlocked(blocked) }
         .onChange(of: scenePhase) { _, phase in probe.setInputSceneActive(phase == .active) }
         .onDisappear { probe.setInputSceneActive(false) }
         .task {
@@ -82,12 +122,160 @@ struct ContentView: View {
             if ProcessInfo.processInfo.arguments.contains("--r2-probe") {
                 _ = RuntimeEnumerator.runProbe { logStore.info($0) }
             }
-            // Normal launch prepares the same known dynamic recipe, never input.
             probe.prepareMacTouchpad()
-            logStore.info("Mac touchpad UI ready; input disabled until explicit enable/touch")
+            logStore.info("Large pad + dictation UI ready; auto-arm when Mac subscribed")
+            #if targetEnvironment(simulator)
+            await runSimulatorCheck()
+            #endif
+        }
+        .sheet(isPresented: $showSettings) {
+            PadSettingsSheet()
+                .environmentObject(probe)
+        }
+    }
+
+    #if targetEnvironment(simulator)
+    private func runSimulatorCheck() async {
+        guard !simulatorCheckRan else { return }
+        simulatorCheckRan = true
+        let args = ProcessInfo.processInfo.arguments
+        guard args.contains("--simulator-text-entry") || args.contains("--simulator-sample-preview") else { return }
+        try? await Task.sleep(for: .seconds(1))
+        if args.contains("--simulator-text-entry") {
+            logStore.info("SIMULATOR ONLY: invoking real system text entry; no ASR success implied")
+            startDictation()
+        } else {
+            logStore.info("SIMULATOR ONLY: synthetic acceptDictation; not speech recognition")
+            probe.acceptDictation("SIMULATOR SAMPLE — not speech")
+        }
+    }
+    #endif
+
+    private var dictationButtonTitle: String {
+        if probe.keyboardBusy { return L10n.string("dictation.cancel") }
+        if dictationPresented { return L10n.string("dictation.listening") }
+        return L10n.string("dictation.button")
+    }
+
+    private var dictationButtonImage: String {
+        probe.keyboardBusy ? "xmark.circle.fill" : "mic.fill"
+    }
+
+
+    /// Pull the first transcript without logging plaintext. Accept String or NSString.
+    private static func dictationString(from results: [Any]?) -> String? {
+        guard let first = results?.first else { return nil }
+        let text: String
+        if let value = first as? String {
+            text = value
+        } else if let value = first as? NSString {
+            text = value as String
+        } else {
+            LogStore.shared.warn("Dictation result ignored; unexpected type")
+            return nil
+        }
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
+    }
+
+    private func handleDictationTap() {
+        if probe.keyboardBusy {
+            probe.cancelTyping()
+        } else if !dictationPresented {
+            startDictation()
+        }
+    }
+
+    private func startDictation() {
+        guard let controller = WKApplication.shared().visibleInterfaceController else {
+            logStore.warn("Dictation unavailable: no visible interface controller")
+            return
+        }
+        logStore.info("Voice text entry requested; system selects initial input method")
+        dictationPresented = true
+        probe.setInputUIBlocked(true)
+        // Captured text is typed into the Mac when possible. The Watch does not show it.
+        controller.presentTextInputController(withSuggestions: nil, allowedInputMode: .plain) { results in
+            Task { @MainActor in
+                // Unblock and keep the input scene active before typing. The
+                // system sheet often leaves scenePhase inactive in this
+                // callback, which previously cancelled or blocked the send.
+                dictationPresented = false
+                probe.setInputUIBlocked(showSettings)
+                probe.setInputSceneActive(true)
+                guard let text = Self.dictationString(from: results) else {
+                    LogStore.shared.info("Dictation canceled or empty")
+                    return
+                }
+                PeripheralProbe.shared.acceptDictation(text)
+            }
         }
     }
 }
+
+struct PadSettingsSheet: View {
+    @EnvironmentObject private var probe: PeripheralProbe
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 10) {
+                Text(L10n.string("settings.title")).font(.headline)
+                Toggle(L10n.string("settings.pause_input"), isOn: Binding(
+                    get: { probe.inputPausedByUser },
+                    set: { probe.setInputPaused($0) }
+                ))
+                Toggle(L10n.string("settings.english_keyboard"), isOn: Binding(
+                    get: { probe.keyboardFeatureEnabled },
+                    set: { probe.setKeyboardFeatureEnabled($0) }
+                ))
+                Text(L10n.string("settings.output"))
+                    .font(.headline)
+                    .padding(.top, 4)
+                if probe.hidHosts.isEmpty {
+                    Text(L10n.string("settings.output_none"))
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                } else {
+                    Button(L10n.string("settings.output_auto")) {
+                        probe.selectOutputHost(nil)
+                    }
+                    .fontWeight(probe.outputIsAutomatic ? .semibold : .regular)
+                    ForEach(probe.hidHosts) { host in
+                        VStack(alignment: .leading, spacing: 4) {
+                            Button(host.isSelected && !probe.outputIsAutomatic ? "\(host.title) ✓" : host.title) {
+                                probe.selectOutputHost(host.id)
+                            }
+                            .fontWeight(host.isSelected && !probe.outputIsAutomatic ? .semibold : .regular)
+                            HStack {
+                                Button(L10n.string("settings.mark_mac")) { probe.labelHost(host.id, kind: .mac) }
+                                Button(L10n.string("settings.mark_iphone")) { probe.labelHost(host.id, kind: .iPhone) }
+                            }
+                            .font(.caption2)
+                        }
+                    }
+                }
+                Text(L10n.string("settings.output_help"))
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                Text(L10n.string("settings.dictation_help"))
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                Text(L10n.string("settings.keyboard_help"))
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                if probe.keyboardBusy {
+                    Button(L10n.string("settings.cancel_keyboard")) { probe.cancelTyping() }
+                }
+                Text(probe.inputStatus).font(.caption2)
+                Button(L10n.string("settings.done")) { dismiss() }
+                    .frame(maxWidth: .infinity)
+            }
+            .padding()
+        }
+    }
+}
+
 
 @MainActor
 final class PhoneBridge: NSObject, ObservableObject, WCSessionDelegate {
@@ -205,6 +393,12 @@ final class WatchBackgroundDelegate: NSObject, WKApplicationDelegate {
     func applicationDidFinishLaunching() {
         LogStore.shared.info("Application delegate launched state=\(WKApplication.shared().applicationState.rawValue)")
         PhoneBridge.shared.activate()
+        // Do not wait for ContentView.task — install/relaunch often leaves the process
+        // backgrounded without a scene, which previously skipped HID advertising entirely.
+        Task { @MainActor in
+            PeripheralProbe.shared.prepareMacTouchpad()
+            LogStore.shared.info("Launch-path prepareMacTouchpad requested")
+        }
     }
 
     func handle(_ backgroundTasks: Set<WKRefreshBackgroundTask>) {
