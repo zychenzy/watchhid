@@ -75,3 +75,8 @@ On the evening of 2026-11-10, after the local output-picker package was installe
 Not fully confirmed: typing dictation into a Mac text field through a separate keyboard HID service; a working mouse while no iPhone is nearby on Wi-Fi as a formal isolation test; every reconnect and restart combination; which listed Device N is the iPhone or the Mac without a local test; a supported way to prevent Keyboard Setup Assistant while the keyboard service is present.
 
 Simulator checks cover UI and the system text-input callback only. They do not prove BLE HOGP, cursor movement, or speech recognition. See [SIMULATOR-CHECKS.md](SIMULATOR-CHECKS.md).
+
+## Logs and the optional iOS tool
+
+WatchHID is a watch-only app. Logs stay on the Watch (`LogStore`, including the persistent `watchhid-r1.log` in the app container). There is no supported Watch Connectivity session to the optional iOS diagnostic target, so “export logs to iPhone” and r4 commands through that app are not available. The iOS target, if used at all, is a standalone BLE scanner; it is not required to install or run the Watch app.
+

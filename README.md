@@ -53,7 +53,7 @@ Then open WatchHID on the Watch, confirm a Bluetooth pairing prompt if macOS sho
 
 ```
 Apps/Watch/     Watch app: HID peripheral + touchpad + dictation
-Apps/iOS/       Companion / diagnostics (not required for the Mac mouse)
+Apps/iOS/       Optional BLE diagnostic tool only; not a Watch companion and not embedded
 Shared/         HID descriptors and input state
 Config/         Tracked templates; local signing and device files are gitignored
 scripts/        Build, install, signing preflight, and verification

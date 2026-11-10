@@ -8,15 +8,13 @@ struct WatchHIDWatchApp: App {
     @Environment(\.scenePhase) private var scenePhase
     @StateObject private var probe = PeripheralProbe.shared
     @StateObject private var logStore = LogStore.shared
-    @StateObject private var phoneBridge = PhoneBridge.shared
 
     var body: some Scene {
         WindowGroup {
             ContentView()
                 .environmentObject(probe)
                 .environmentObject(logStore)
-                .environmentObject(phoneBridge)
-                .onAppear { phoneBridge.activate(); logStore.info("Scene appeared phase=\(String(describing: scenePhase))") }
+                .onAppear { logStore.info("Scene appeared phase=\(String(describing: scenePhase))") }
                 .onChange(of: scenePhase) { _, phase in logStore.info("Scene phase=\(String(describing: phase))") }
         }
     }
@@ -26,7 +24,6 @@ struct ContentView: View {
     @Environment(\.scenePhase) private var scenePhase
     @EnvironmentObject private var probe: PeripheralProbe
     @EnvironmentObject private var logStore: LogStore
-    @EnvironmentObject private var phoneBridge: PhoneBridge
     @State private var showSettings = false
     @State private var dictationPresented = false
     @State private var crownValue = 0.0
@@ -361,42 +358,18 @@ final class PhoneBridge: NSObject, ObservableObject, WCSessionDelegate {
 
     @Published var lastExportStatus = ""
 
+    /// Watch-only apps have no iOS companion. Apple's Watch Connectivity is for
+    /// a Watch app and its companion iPhone app, so log export and r4 commands
+    /// through the optional iOS diagnostic tool are not a supported channel.
+    /// Logs stay in LogStore on the Watch (Documents/watchhid-r1.log).
     func activate() {
-        guard WCSession.isSupported() else {
-            lastExportStatus = "WCSession unsupported"
-            return
-        }
-        let session = WCSession.default
-        session.delegate = self
-        session.activate()
+        lastExportStatus = "unavailable in watch-only app"
+        LogStore.shared.info("WCSession companion channel unavailable (watch-only); logs stay on the Watch")
     }
 
     func sendLog(_ text: String) {
-        guard WCSession.default.activationState == .activated else {
-            lastExportStatus = "session not active"
-            LogStore.shared.warn("WCSession not active; cannot export")
-            return
-        }
-        let payload: [String: Any] = [
-            "type": "r1-log",
-            "text": text,
-            "ts": Date().timeIntervalSince1970,
-        ]
-        if WCSession.default.isReachable {
-            WCSession.default.sendMessage(payload, replyHandler: { _ in
-                Task { @MainActor in
-                    self.lastExportStatus = "sent via message"
-                    LogStore.shared.info("Log exported to iPhone (message)")
-                }
-            }, errorHandler: { error in
-                Task { @MainActor in
-                    self.transferLog(payload)
-                    LogStore.shared.warn("sendMessage failed: \(error.localizedDescription); fallback transfer")
-                }
-            })
-        } else {
-            transferLog(payload)
-        }
+        lastExportStatus = "unavailable in watch-only app"
+        LogStore.shared.warn("WCSession log export unavailable in a watch-only app; not sending \(text.count) chars")
     }
 
     private func transferLog(_ payload: [String: Any]) {
@@ -428,7 +401,6 @@ final class PhoneBridge: NSObject, ObservableObject, WCSessionDelegate {
 final class WatchBackgroundDelegate: NSObject, WKApplicationDelegate {
     func applicationDidFinishLaunching() {
         LogStore.shared.info("Application delegate launched state=\(WKApplication.shared().applicationState.rawValue)")
-        PhoneBridge.shared.activate()
         // Do not wait for ContentView.task — install/relaunch often leaves the process
         // backgrounded without a scene, which previously skipped HID advertising entirely.
         Task { @MainActor in
@@ -441,15 +413,9 @@ final class WatchBackgroundDelegate: NSObject, WKApplicationDelegate {
         for task in backgroundTasks {
             LogStore.shared.info("Background task type=\(String(describing: type(of: task)))")
             if task is WKWatchConnectivityRefreshBackgroundTask {
-                LogStore.shared.info("WatchConnectivity background delivery task")
-                Task { @MainActor in
-                    await PhoneBridge.shared.finishBackgroundDelivery()
-                    LogStore.shared.info("WatchConnectivity background delivery completing")
-                    task.setTaskCompletedWithSnapshot(false)
-                }
-            } else {
-                task.setTaskCompletedWithSnapshot(false)
+                LogStore.shared.info("WatchConnectivity background task ignored (watch-only; no companion session)")
             }
+            task.setTaskCompletedWithSnapshot(false)
         }
     }
 }

@@ -107,6 +107,8 @@ A still-valid pre-signed zip can be installed without a local certificate, but t
 
 ## 7. Install onto the Watch
 
+The product Watch app is watch-only (`WKWatchOnly`): it has no iOS companion and is not embedded in the optional iOS diagnostic target. Install the `WatchHIDWatchApp` scheme or `./scripts/install-signed-watch-app.sh`. A paired iPhone may still be needed for the developer tunnel or system Watch services; that is not the same as installing a companion app. Watch Connectivity log export to the iOS tool is not available.
+
 The install script waits for a `connected` developer tunnel and matches only the UDID in `Config/local_devices.env`. It will not install onto a different Watch. A `connected` list entry is not sufficient by itself: after the tunnel is listed, the script also probes CoreDevice details and DDI services. On 2026-11-10, two installs on a home Mac failed with “Failed to allocate RSD device” after the list said `connected`; the same package installed once those probes succeeded. Signing was not changed. See [evidence/home-mini-neutral-picker-2026-11-10.md](evidence/home-mini-neutral-picker-2026-11-10.md).
 
 ```bash

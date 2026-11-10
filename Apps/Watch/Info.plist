@@ -12,13 +12,11 @@
 		<string>zh-Hans</string>
 		<string>zh-Hant</string>
 	</array>
-	<key>WKCompanionAppBundleIdentifier</key>
-	<string>com.zy.watchhid</string>
 	<key>NSBluetoothAlwaysUsageDescription</key>
 	<string>WatchHID probes BLE peripheral advertising so the watch can appear as Watch Mouse.</string>
 	<key>NSBluetoothPeripheralUsageDescription</key>
 	<string>WatchHID probes BLE peripheral advertising so the watch can appear as Watch Mouse.</string>
 	<key>WKWatchOnly</key>
-	<false/>
+	<true/>
 </dict>
 </plist>

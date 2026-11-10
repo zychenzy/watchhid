@@ -17,7 +17,6 @@
 		3DFA40E4337FD0076A1927C6 /* ChecklistView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D902E4B19FE4FDDEEAC50856 /* ChecklistView.swift */; };
 		4B08FA18222C37AA58EBF0DA /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 05B5D0BB50EDC1EE8902F855 /* Assets.xcassets */; };
 		51AAC040450AF10BCDF5E8B2 /* MouseInputState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04D84C02614867018A14428D /* MouseInputState.swift */; };
-		7110D9E8D8AD5FC3DC6D412D /* WatchHIDWatchApp.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = F13A56123FA0BE1B32063217 /* WatchHIDWatchApp.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		7C86C1BF3FE469311A5EE68F /* KeyboardInputState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 047E8037B023988114B6014B /* KeyboardInputState.swift */; };
 		84B97F4F6F55B1FAE7C43F70 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 9E65FE9002DE5DD83C68D2C3 /* Assets.xcassets */; };
 		8B3737AA07380EBE4D1A41F4 /* WatchHIDApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3252ADA39FC701DE6675A667 /* WatchHIDApp.swift */; };
@@ -38,13 +37,6 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
-		4C52A96F9D9E1346E2D0F299 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = A895A39BBAA09510BCC0ECF0 /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = A8E2BC837637E1B9D584DA0D;
-			remoteInfo = WatchHIDWatchApp;
-		};
 		6755E73A1F557DD0D71150CD /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = A895A39BBAA09510BCC0ECF0 /* Project object */;
@@ -53,20 +45,6 @@
 			remoteInfo = WatchHIDWatchApp;
 		};
 /* End PBXContainerItemProxy section */
-
-/* Begin PBXCopyFilesBuildPhase section */
-		4DB194FF3CCF0BF6E60C8AD0 /* Embed Watch Content */ = {
-			isa = PBXCopyFilesBuildPhase;
-			buildActionMask = 2147483647;
-			dstPath = "$(CONTENTS_FOLDER_PATH)/Watch";
-			dstSubfolderSpec = 16;
-			files = (
-				7110D9E8D8AD5FC3DC6D412D /* WatchHIDWatchApp.app in Embed Watch Content */,
-			);
-			name = "Embed Watch Content";
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		047E8037B023988114B6014B /* KeyboardInputState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardInputState.swift; sourceTree = "<group>"; };
@@ -233,12 +211,10 @@
 			buildPhases = (
 				84929424B9D4C55EB178891C /* Sources */,
 				1279EBB66413FE7653ED8225 /* Resources */,
-				4DB194FF3CCF0BF6E60C8AD0 /* Embed Watch Content */,
 			);
 			buildRules = (
 			);
 			dependencies = (
-				734F71F830427566A55E895E /* PBXTargetDependency */,
 			);
 			name = WatchHID;
 			packageProductDependencies = (
@@ -386,11 +362,6 @@
 			target = A8E2BC837637E1B9D584DA0D /* WatchHIDWatchApp */;
 			targetProxy = 6755E73A1F557DD0D71150CD /* PBXContainerItemProxy */;
 		};
-		734F71F830427566A55E895E /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = A8E2BC837637E1B9D584DA0D /* WatchHIDWatchApp */;
-			targetProxy = 4C52A96F9D9E1346E2D0F299 /* PBXContainerItemProxy */;
-		};
 /* End PBXTargetDependency section */
 
 /* Begin PBXVariantGroup section */
@@ -418,13 +389,12 @@
 				INFOPLIST_FILE = Apps/Watch/Info.plist;
 				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "WatchHID probes BLE peripheral advertising so the watch can appear as Watch Mouse.";
 				INFOPLIST_KEY_NSBluetoothPeripheralUsageDescription = "WatchHID probes BLE peripheral advertising so the watch can appear as Watch Mouse.";
-				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.zy.watchhid;
+				INFOPLIST_KEY_WKWatchOnly = YES;
 				PRODUCT_BUNDLE_IDENTIFIER = com.zy.watchhid.watchkitapp;
 				SDKROOT = watchos;
-				SKIP_INSTALL = YES;
+				SKIP_INSTALL = NO;
 				SWIFT_OBJC_BRIDGING_HEADER = "Apps/Watch/WatchHIDWatch-Bridging-Header.h";
 				TARGETED_DEVICE_FAMILY = 4;
-				WKRunsIndependentlyOfCompanionApp = NO;
 			};
 			name = Release;
 		};
@@ -627,13 +597,12 @@
 				INFOPLIST_FILE = Apps/Watch/Info.plist;
 				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "WatchHID probes BLE peripheral advertising so the watch can appear as Watch Mouse.";
 				INFOPLIST_KEY_NSBluetoothPeripheralUsageDescription = "WatchHID probes BLE peripheral advertising so the watch can appear as Watch Mouse.";
-				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.zy.watchhid;
+				INFOPLIST_KEY_WKWatchOnly = YES;
 				PRODUCT_BUNDLE_IDENTIFIER = com.zy.watchhid.watchkitapp;
 				SDKROOT = watchos;
-				SKIP_INSTALL = YES;
+				SKIP_INSTALL = NO;
 				SWIFT_OBJC_BRIDGING_HEADER = "Apps/Watch/WatchHIDWatch-Bridging-Header.h";
 				TARGETED_DEVICE_FAMILY = 4;
-				WKRunsIndependentlyOfCompanionApp = NO;
 			};
 			name = Debug;
 		};

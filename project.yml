@@ -24,8 +24,7 @@ targets:
     sources:
       - path: Apps/iOS
       - path: Shared
-    dependencies:
-      - target: WatchHIDWatchApp
+    # Optional diagnostic tool only. Not a Watch companion; do not embed the Watch app.
     configFiles:
       Debug: Config/Developer.xcconfig
       Release: Config/Developer.xcconfig
@@ -57,12 +56,11 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.zy.watchhid.watchkitapp
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_FILE: Apps/Watch/Info.plist
-        INFOPLIST_KEY_WKCompanionAppBundleIdentifier: com.zy.watchhid
+        INFOPLIST_KEY_WKWatchOnly: YES
         INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription: "WatchHID probes BLE peripheral advertising so the watch can appear as Watch Mouse."
         INFOPLIST_KEY_NSBluetoothPeripheralUsageDescription: "WatchHID probes BLE peripheral advertising so the watch can appear as Watch Mouse."
         CODE_SIGN_ENTITLEMENTS: Apps/Watch/WatchHIDWatch.entitlements
-        WKRunsIndependentlyOfCompanionApp: NO
-        SKIP_INSTALL: YES
+        SKIP_INSTALL: NO
         SWIFT_OBJC_BRIDGING_HEADER: Apps/Watch/WatchHIDWatch-Bridging-Header.h
         CLANG_ENABLE_MODULES: YES
 
@@ -84,7 +82,6 @@ schemes:
     build:
       targets:
         WatchHID: all
-        WatchHIDWatchApp: all
   WatchHIDWatchApp:
     build:
       targets:
