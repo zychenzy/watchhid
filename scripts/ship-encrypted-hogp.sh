@@ -19,28 +19,9 @@ elif [[ -n "${1:-}" ]]; then
   exit 2
 fi
 
-if ! command -v xcodegen >/dev/null; then
-  echo "Missing xcodegen. On the signing Mac: brew install xcodegen" >&2
-  exit 1
-fi
-
-XCCONFIG="$ROOT/Config/Developer.xcconfig"
-if [[ ! -f "$XCCONFIG" ]]; then
-  echo "Missing $XCCONFIG. Copy Config/Developer.xcconfig.example and set DEVELOPMENT_TEAM." >&2
-  exit 1
-fi
-
-if ! grep -qE '^DEVELOPMENT_TEAM *= *[A-Z0-9]+' "$XCCONFIG"; then
-  echo "Config/Developer.xcconfig has no DEVELOPMENT_TEAM. This machine cannot sign yet." >&2
-  exit 1
-fi
-
-if ! security find-identity -v -p codesigning 2>/dev/null | grep -q 'Apple Development'; then
-  echo "No Apple Development signing identity on this Mac." >&2
-  echo "If this Mac is the build machine, open Xcode > Settings > Accounts, sign in with the project Apple ID, then run this script again. The first signed build may show a system or Xcode prompt; confirm it there. Do not send passwords or codes in chat." >&2
-  echo "Alternatively, run this script on a Mac that already has the identity, copy the zip, and install it here." >&2
-  exit 1
-fi
+# Fail clearly when xcodegen, Config/Developer.xcconfig, or a usable
+# Apple Development identity (certificate + private key) is missing.
+"$ROOT/scripts/check-signing-prereqs.sh"
 
 echo "==> xcodegen"
 xcodegen generate
@@ -76,6 +57,14 @@ if ! python3 "$LIB" run-bounded --timeout 30 -- codesign --verify --verbose=2 "$
   echo "codesign verification failed or timed out." >&2
   exit 1
 fi
+if [[ -f "$ZIP" ]]; then
+  OLD_SHA="$(shasum -a 256 "$ZIP" | awk '{print $1}')"
+  ROLLBACK="$OUT_DIR/WatchHID-encrypted-hogp-${OLD_SHA:0:16}-rollback.zip"
+  if [[ ! -f "$ROLLBACK" ]]; then
+    cp -p "$ZIP" "$ROLLBACK"
+    echo "==> kept the previous zip as a rollback beside this file (WatchHID-encrypted-hogp-<sha-prefix>-rollback.zip)"
+  fi
+fi
 rm -f "$ZIP"
 ditto -c -k --keepParent "$APP" "$ZIP"
 echo "==> packaged encrypted zip under build/diagnostics/recovery-root/ (filename not printed with host paths if you copy this log; the file is WatchHID-encrypted-hogp.zip)"
@@ -84,7 +73,8 @@ if [[ "$INSTALL" -eq 1 ]]; then
   echo "==> handing off to install-signed-watch-app.sh (exact UDID, tunnel must be connected)"
   exec "$ROOT/scripts/install-signed-watch-app.sh" "$APP"
 else
-  echo "Package is ready. Copy WatchHID-encrypted-hogp.zip to the Mac that will talk to the Watch, then:"
+  echo "Package is ready on this Mac at build/diagnostics/recovery-root/WatchHID-encrypted-hogp.zip."
+  echo "Install (when the developer tunnel is connected) with:"
   echo "  ./scripts/install-signed-watch-app.sh /path/to/WatchHID-encrypted-hogp.zip"
   echo "The install script unpacks a fresh copy from the zip by default so a stale extract is not used."
   echo "Open WatchHID, accept a pairing prompt if it appears, then run ./scripts/verify-hogp-mouse.sh on that Mac."
