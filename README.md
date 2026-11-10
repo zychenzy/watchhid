@@ -86,3 +86,7 @@ See [docs/usage.md](docs/usage.md) for gestures, output selection, and dictation
 - [Docs index](docs/INDEX.md)
 
 Logic tests (no Bluetooth, no system input) and the repository layout are listed in the docs index.
+
+## License
+
+Licensed under the [Apache License, Version 2.0](LICENSE).
