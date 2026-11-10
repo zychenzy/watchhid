@@ -17,10 +17,10 @@
 - 重装或失活时仍可能出现 ATT242，导致 Mac 尚未重新创建鼠标节点。若指针不动，先退出并手动重新打开 WatchHID；若仍失败，保留现场日志供排查。**不要为了试用取消配对、清蓝牙缓存或重置系统蓝牙。**
 - 手表离开 Mac 范围后，远程开发连接不可用是正常的，不代表 USB 运行独立性失效。
 
-新 Mac 上要先具备完整 Xcode 和手表开发连接，才能安装这些已签名包；系统登录账号可以和 Xcode 签名用的 Apple ID 不同。开发安装通道和蓝牙连接不是一回事：手表蓝牙已连接时，`devicectl` 仍可能是 `unavailable`。这时把手表点亮解锁，把配对的 iPhone 拿近并连同一 Wi-Fi（不必插线），等到手表显示为 `connected`，再运行 `./scripts/install-signed-watch-app.sh`。2026-11-10 11:54（北京时间）曾在未插 USB、同一 Wi-Fi 且 iPhone 已解锁时无线装包成功；这不代表 iPhone 永远必需，也不代表无线隔离已验证。同日稍后，这台新 Mac 已完成加密配对并创建了 HID 设备，但身份是系统 Apple Watch，短滑后指针没有移动，不能宣称路径已经快速可靠。不要从其他电脑复制蓝牙绑定，也不要重置刚刚完成的绑定。若要重新构建，可在这台 Mac 按 [SETUP.zh-CN.md](SETUP.zh-CN.md) 第 4 节创建本机 Apple Development 证书（不必回到原先的签名机，也不要拷私钥），再运行 `./scripts/ship-encrypted-hogp.sh`。打开应用并确认配对后，跑 `./scripts/verify-hogp-mouse.sh`；脚本的 NODE_OK 只表示同节点身份，指针移动要你自己看见。手表若一直显示 `等待 Mac 系统订阅`，也不等于这台 Mac 的订阅已被应用接受。本机签名只在这台电脑负责构建时才是必要步骤。出门后的最短步骤见 [RETURN-CHECKLIST.zh-CN.md](RETURN-CHECKLIST.zh-CN.md)。当天证据见 [new-mac-hogp-2026-11-10.zh-CN.md](new-mac-hogp-2026-11-10.zh-CN.md)。详见 [SETUP.zh-CN.md](SETUP.zh-CN.md) 和项目 skill [watchhid-new-mac-hogp](../.cursor/skills/watchhid-new-mac-hogp/SKILL.md)。
+新 Mac 上要先具备完整 Xcode 和手表开发连接，才能安装这些已签名包；系统登录账号可以和 Xcode 签名用的 Apple ID 不同。开发安装通道和蓝牙连接不是一回事：手表蓝牙已连接时，`devicectl` 仍可能是 `unavailable`。这时把手表点亮解锁，把配对的 iPhone 拿近并连同一 Wi-Fi（不必插线），等到手表显示为 `connected`，再运行 `./scripts/install-signed-watch-app.sh`。2026-11-10 11:54（北京时间）曾在未插 USB、同一 Wi-Fi 且 iPhone 已解锁时无线装包成功；这不代表 iPhone 永远必需，也不代表无线隔离已验证。同日稍后，这台新 Mac 已完成加密配对并创建了 HID 设备，但身份是系统 Apple Watch，短滑后指针没有移动，不能宣称路径已经快速可靠。不要从其他电脑复制蓝牙绑定，也不要重置刚刚完成的绑定。项目已经在这台 Mac 上时，默认在本机按 [SETUP.zh-CN.md](SETUP.zh-CN.md) 第 4 节创建可用的 Apple Development 身份（证书加私钥；不要只导入 `.cer`，也不要拷私钥或回到原先的签名机），运行 `./scripts/check-signing-prereqs.sh`，再运行 `./scripts/ship-encrypted-hogp.sh`。安装仍然有效的预签名包可以不需要本机证书，但那不是拷贝项目之后的首选重建方式。打开应用并确认配对后，跑 `./scripts/verify-hogp-mouse.sh`；脚本的 NODE_OK 只表示同节点身份，指针移动要你自己看见。手表若一直显示 `等待 Mac 系统订阅`，也不等于这台 Mac 的订阅已被应用接受。项目已经拷到这台电脑后，默认就在本机签名出包。出门后的最短步骤见 [RETURN-CHECKLIST.zh-CN.md](RETURN-CHECKLIST.zh-CN.md)。当天证据见 [new-mac-hogp-2026-11-10.zh-CN.md](new-mac-hogp-2026-11-10.zh-CN.md)。详见 [SETUP.zh-CN.md](SETUP.zh-CN.md) 和项目 skill [watchhid-new-mac-hogp](../.cursor/skills/watchhid-new-mac-hogp/SKILL.md)。
 
 ## 本地包与回滚
-Mac mini：`~/projects/watchhid/build/diagnostics/recovery-root/`
+本机默认出包目录：`build/diagnostics/recovery-root/`（不再需要为了打包去用 Mac mini）。原先开发机上也有同名目录，可用于对照旧归档。
 - `WatchHID-return-home-candidate.zip`：整理后的可装候选，源码8db3f5d；新增测试入口仅编译到模拟器，未重新装到离家的手表。
 - `WatchHID-voice-primary.zip`：目前最后装到手表的版本，源码19e2b13。
 - `WatchHID-large-static.zip`：大触控板成功基线，源码3d714db。
