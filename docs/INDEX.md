@@ -14,6 +14,7 @@ Evidence and deeper notes:
 | Doc | Topic |
 |---|---|
 | [evidence/new-mac-hogp-2026-11-10.md](evidence/new-mac-hogp-2026-11-10.md) | Confirmed events on a second Mac on 2026-11-10 (Asia/Shanghai) |
+| [evidence/home-mini-neutral-picker-2026-11-10.md](evidence/home-mini-neutral-picker-2026-11-10.md) | Home the development Mac, 2026-11-10: output picker, RSD install readiness, operator acceptance, Keyboard Setup Assistant limits |
 | [SIMULATOR-CHECKS.md](SIMULATOR-CHECKS.md) | Simulator UI and text-input callbacks; not BLE or speech |
 | [large-pad-dictation-en.md](large-pad-dictation-en.md) | Feature-branch intent for the large pad and optional English HID |
 | [research/](research/) | Earlier experiment notes and audits |

@@ -403,6 +403,58 @@ def provision_info(app_path: str, env_file: str = "") -> int:
     return 0
 
 
+
+def _devicectl_outcome(data: Any) -> str:
+    if not isinstance(data, dict):
+        return ""
+    info = data.get("info") or {}
+    if not isinstance(info, dict):
+        return ""
+    return str(info.get("outcome") or "")
+
+
+def _devicectl_result(data: Any) -> dict:
+    if not isinstance(data, dict):
+        return {}
+    result = data.get("result")
+    return result if isinstance(result, dict) else {}
+
+
+def developer_services_ready(details: Any, ddi: Any | None = None) -> tuple[bool, str]:
+    """Whether CoreDevice details/DDI JSON show usable developer services.
+
+    A list-devices tunnelState of "connected" is not sufficient: install can
+    still fail with "Failed to allocate RSD device" until these probes succeed.
+    Does not print identifiers.
+    """
+    if _devicectl_outcome(details) != "success":
+        return False, "details-failed"
+    result = _devicectl_result(details)
+    dev = result.get("deviceProperties") if isinstance(result.get("deviceProperties"), dict) else {}
+    conn = result.get("connectionProperties") if isinstance(result.get("connectionProperties"), dict) else {}
+    props = result.get("properties") if isinstance(result.get("properties"), dict) else {}
+    pconn = props.get("connection") if isinstance(props.get("connection"), dict) else {}
+    tunnel = str(conn.get("tunnelState") or pconn.get("state") or pconn.get("tunnelState") or "")
+    if tunnel != "connected":
+        return False, "tunnel-not-connected"
+    ddi_avail = dev.get("ddiServicesAvailable")
+    if ddi_avail is False:
+        return False, "ddi-unavailable"
+    if ddi is not None:
+        if _devicectl_outcome(ddi) != "success":
+            return False, "ddi-probe-failed"
+        meta = _devicectl_result(ddi).get("ddiMetadata")
+        if not isinstance(meta, dict):
+            return False, "ddi-unconfirmed"
+        if meta.get("isUsable") is False or meta.get("contentIsCompatible") is False:
+            return False, "ddi-not-usable"
+        return True, "ready"
+    if ddi_avail is True:
+        return True, "ready"
+    return False, "ddi-unconfirmed"
+
+
+
 def _cli(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="watchhid_scriptlib.py")
     sub = parser.add_subparsers(dest="cmd", required=True)
@@ -429,6 +481,11 @@ def _cli(argv: list[str] | None = None) -> int:
     p_prov = sub.add_parser("provision-info")
     p_prov.add_argument("app_path")
     p_prov.add_argument("--env-file", default="")
+
+
+    p_ready = sub.add_parser("services-ready", help="Judge details/DDI JSON without printing identifiers")
+    p_ready.add_argument("details_json")
+    p_ready.add_argument("ddi_json", nargs="?", default="")
 
     args = parser.parse_args(argv)
     if args.cmd == "watch-state":
@@ -474,6 +531,12 @@ def _cli(argv: list[str] | None = None) -> int:
             stdout_path=args.stdout_path or None,
         )
         return proc.returncode
+    if args.cmd == "services-ready":
+        details = load_ioreg_data(Path(args.details_json).read_text())
+        ddi = load_ioreg_data(Path(args.ddi_json).read_text()) if args.ddi_json else None
+        ok, reason = developer_services_ready(details, ddi)
+        print(reason)
+        return 0 if ok else 1
     if args.cmd == "provision-info":
         return provision_info(args.app_path, args.env_file)
     return 2

@@ -4,13 +4,13 @@ Use an Apple Watch as a real Bluetooth LE HID mouse for a Mac. No extra hardware
 
 This repository is written in English. The Watch app UI follows the Watch system language, with English, Simplified Chinese, and Traditional Chinese; any other language falls back to English.
 
-## Status (2026-11-10, Asia/Shanghai)
+## Status (2026-11-10, Asia/Hong_Kong)
 
 | Path | Status |
 |---|---|
-| Mac as a direct BLE HOGP mouse | Confirmed on two Macs: same-node identity `WatchHID` / `Ultra2-R1`, plus pointer movement the operator saw. A new Mac needs its own encrypted HOGP bond and a build that accepts any Report subscriber. |
+| Mac as a direct BLE HOGP mouse | Confirmed on two Macs: same-node identity `WatchHID` / `Ultra2-R1`, plus pointer movement the operator saw. On the evening of 2026-11-10 the operator said the Watch was working on the the development Mac after a local install; `NODE_OK` was recorded there. A new Mac needs its own encrypted HOGP bond. |
 | Watch dictation | System dictation captures text on the Watch and can type typable English into the focused Mac field when the keyboard HID is on. The Watch does not show the captured text. |
-| English HID keyboard into the Mac | **Off** by default. Do not use the composite mouse+keyboard Report Map on a Mac that already bonded the baseline mouse map (that made movement vertical-only). The Settings toggle adds a separate keyboard service instead. |
+| English HID keyboard into the Mac | **Off** by default. A separate keyboard service can make macOS open Keyboard Setup Assistant; close it. There is no official guaranteed way to prevent that window while the keyboard service is present. Do not use the composite mouse+keyboard Report Map on a Mac that already bonded the baseline mouse map. |
 | iPhone as a HID host | The operator confirmed Watch control of the iPhone while away from the Mac; not instrumented here. When two hosts are subscribed, pick one Device in Settings and test. “Ready” means a host subscribed, not that the iPhone already moved. |
 
 watchOS marks `CBPeripheralManager` APIs `API_UNAVAILABLE(watchos)`. This project creates the peripheral at runtime and it works on the setups below. That is not a supported stability guarantee for future watchOS.
@@ -36,6 +36,7 @@ cp Config/local_devices.env.example Config/local_devices.env     # once; fill th
 # If the script says WWDR G3 is missing:
 ./scripts/check-signing-prereqs.sh --install-wwdr
 ./scripts/ship-encrypted-hogp.sh
+./scripts/install-signed-watch-app.sh --check-ready
 ./scripts/install-signed-watch-app.sh
 ```
 

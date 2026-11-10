@@ -151,6 +151,56 @@ class WatchStateTests(unittest.TestCase):
         self.assertEqual(lib.watch_developer_state(data, TARGET), "connected")
 
 
+class DeveloperServicesReadyTests(unittest.TestCase):
+    def test_connected_details_and_usable_ddi_are_ready(self):
+        details = {
+            "info": {"outcome": "success"},
+            "result": {
+                "connectionProperties": {"tunnelState": "connected"},
+                "deviceProperties": {"ddiServicesAvailable": True},
+            },
+        }
+        ddi = {
+            "info": {"outcome": "success"},
+            "result": {"ddiMetadata": {"isUsable": True, "contentIsCompatible": True}},
+        }
+        ok, reason = lib.developer_services_ready(details, ddi)
+        self.assertTrue(ok)
+        self.assertEqual(reason, "ready")
+
+    def test_list_connected_is_not_enough_when_details_fail(self):
+        details = {"info": {"outcome": "failed"}}
+        ok, reason = lib.developer_services_ready(details, None)
+        self.assertFalse(ok)
+        self.assertEqual(reason, "details-failed")
+
+    def test_ddi_unusable_is_not_ready(self):
+        details = {
+            "info": {"outcome": "success"},
+            "result": {
+                "connectionProperties": {"tunnelState": "connected"},
+                "deviceProperties": {"ddiServicesAvailable": True},
+            },
+        }
+        ddi = {
+            "info": {"outcome": "success"},
+            "result": {"ddiMetadata": {"isUsable": False, "contentIsCompatible": True}},
+        }
+        ok, reason = lib.developer_services_ready(details, ddi)
+        self.assertFalse(ok)
+        self.assertEqual(reason, "ddi-not-usable")
+
+    def test_details_without_ddi_flag_stay_unconfirmed(self):
+        details = {
+            "info": {"outcome": "success"},
+            "result": {"connectionProperties": {"tunnelState": "connected"}},
+        }
+        ok, reason = lib.developer_services_ready(details, None)
+        self.assertFalse(ok)
+        self.assertEqual(reason, "ddi-unconfirmed")
+
+
+
 class VerifyNodeTests(unittest.TestCase):
     def test_same_node_identity_and_usage_passes(self):
         data = [hid_node("WatchHID", "Ultra2-R1", pairs=MOUSE_POINTER_PAIRS)]

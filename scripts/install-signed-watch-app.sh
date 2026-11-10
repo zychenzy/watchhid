@@ -13,9 +13,10 @@ LAUNCH_TIMEOUT=60
 CODESIGN_TIMEOUT=30
 
 usage() {
-  echo "Usage: $0 [WatchHIDWatchApp.app|signed.zip]" >&2
+  echo "Usage: $0 [--check-ready] [WatchHIDWatchApp.app|signed.zip]" >&2
   echo "If no path is given, prefers build/diagnostics/recovery-root/WatchHID-encrypted-hogp.zip" >&2
   echo "over a previously extracted encrypted-hogp/WatchHIDWatchApp.app, so a stale extract cannot win." >&2
+  echo "--check-ready lists the exact Watch, then probes details/DDI without installing." >&2
   exit 2
 }
 
@@ -23,10 +24,16 @@ if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
   usage
 fi
 
+CHECK_READY=0
+if [[ "${1:-}" == "--check-ready" ]]; then
+  CHECK_READY=1
+  shift
+fi
+
 SRC="${1:-}"
 DEFAULT_APP="${WATCHHID_DEFAULT_APP:-$ROOT/build/diagnostics/recovery-root/encrypted-hogp/WatchHIDWatchApp.app}"
 DEFAULT_ZIP="${WATCHHID_DEFAULT_ZIP:-$ROOT/build/diagnostics/recovery-root/WatchHID-encrypted-hogp.zip}"
-if [[ -z "$SRC" ]]; then
+if [[ -z "$SRC" && "$CHECK_READY" -eq 0 ]]; then
   SRC="$(python3 "$LIB" choose-default-package "$DEFAULT_APP" "$DEFAULT_ZIP" || true)"
   if [[ -z "$SRC" ]]; then
     echo "No package path given, and no default encrypted package was found." >&2
@@ -55,6 +62,38 @@ Do all of the following, then run this script again:
 EOF
 }
 
+
+print_services_help() {
+  cat <<'EOF'
+The developer tunnel was listed as connected, but CoreDevice details or DDI services were not usable. This is the same class of failure as "Failed to allocate RSD device": the list state is not a sufficient install gate. Do not reset Bluetooth or unpair the Watch.
+
+Keep the Watch close, awake, unlocked, and screen-on, then run this script again. Optional: ./scripts/install-signed-watch-app.sh --check-ready
+EOF
+}
+
+probe_developer_services() {
+  DETAILS_JSON="$(mktemp "${TMPDIR:-/tmp}/watchhid-details.XXXXXX")"
+  DDI_JSON="$(mktemp "${TMPDIR:-/tmp}/watchhid-ddi.XXXXXX")"
+  if ! python3 "$LIB" run-bounded --timeout 20 --       xcrun devicectl device info details         --device "$WATCH_UDID"         --timeout 20         --json-output "$DETAILS_JSON" >/dev/null; then
+    echo "Watch developer details probe failed or timed out." >&2
+    print_services_help
+    return 2
+  fi
+  if ! python3 "$LIB" run-bounded --timeout 20 --       xcrun devicectl device info ddiServices         --device "$WATCH_UDID"         --timeout 20         --json-output "$DDI_JSON" >/dev/null; then
+    echo "Watch DDI services probe failed or timed out." >&2
+    print_services_help
+    return 2
+  fi
+  local reason
+  if ! reason="$(python3 "$LIB" services-ready "$DETAILS_JSON" "$DDI_JSON")"; then
+    echo "Watch developer services are not ready ($reason). A connected tunnel list entry is not enough." >&2
+    print_services_help
+    return 2
+  fi
+  echo "Watch developer services: ready"
+  return 0
+}
+
 LIST_JSON="$(mktemp "${TMPDIR:-/tmp}/watchhid-devicelist.XXXXXX")"
 cleanup() {
   rm -f "$LIST_JSON"
@@ -63,6 +102,12 @@ cleanup() {
   fi
   if [[ -n "${LAUNCH_JSON:-}" && -f "${LAUNCH_JSON:-}" ]]; then
     rm -f "$LAUNCH_JSON"
+  fi
+  if [[ -n "${DETAILS_JSON:-}" && -f "${DETAILS_JSON:-}" ]]; then
+    rm -f "$DETAILS_JSON"
+  fi
+  if [[ -n "${DDI_JSON:-}" && -f "${DDI_JSON:-}" ]]; then
+    rm -f "$DDI_JSON"
   fi
   if [[ -n "${WORKDIR:-}" && -d "${WORKDIR:-}" ]]; then
     rm -rf "$WORKDIR"
@@ -97,6 +142,11 @@ case "$STATE" in
     exit 2
     ;;
 esac
+
+if [[ "$CHECK_READY" -eq 1 ]]; then
+  probe_developer_services
+  exit $?
+fi
 
 APP=""
 WORKDIR=""
@@ -137,8 +187,12 @@ else
 fi
 
 if [[ "${WATCHHID_DRY_RUN:-}" == "1" ]]; then
-  echo "DRY_RUN: would verify signature, install, and launch WatchHID. Package is ready and the exact UDID is connected."
+  echo "DRY_RUN: would verify signature, probe developer services, install, and launch WatchHID. Package is ready and the exact UDID is connected."
   exit 0
+fi
+
+if [[ "${WATCHHID_SKIP_SERVICES_READY:-}" != "1" ]]; then
+  probe_developer_services || exit $?
 fi
 
 if ! python3 "$LIB" run-bounded --timeout "$CODESIGN_TIMEOUT" -- \

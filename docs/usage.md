@@ -49,7 +49,11 @@ The system input method and recognition language are controlled by watchOS. Ther
 
 English HID typing into the Mac is **off** by default. A composite mouse-and-keyboard Report Map (Report IDs) must not be used on a Mac that already bonded the no-Report-ID mouse map: on 2026-11-10 that made pointer movement vertical-only. Turning the keyboard off restored the baseline map and the pointer. The current Settings toggle adds a separate keyboard HID service and leaves the mouse Report Map unchanged.
 
-Only US-ASCII is mapped; Chinese and other non-ASCII characters are skipped. This is not a way to type Chinese into the Mac. If a Keyboard Setup Assistant appears, close it; do not reset Bluetooth or unpair the system Apple Watch. If the pointer ever goes wrong again, turn English keyboard HID off in Settings.
+Only US-ASCII is mapped; Chinese and other non-ASCII characters are skipped. This is not a way to type Chinese into the Mac.
+
+If a Keyboard Setup Assistant appears, close it. That is the supported response. [Apple’s Mac User Guide](https://support.apple.com/guide/mac-help/specify-a-keyboard-type-mchlp2886/mac) says this assistant opens automatically when macOS connects a keyboard it does not immediately recognize, so you can specify ANSI, ISO, or JIS. There is no official WatchHID or macOS setting documented here that guarantees the window will not appear while a keyboard HID service is present. Do not disable or move the system assistant, do not edit `/Library` keyboard-type preferences, and do not change the working mouse HID identity or Report Map to spoof a built-in Apple keyboard.
+
+English keyboard HID is off by default, and the separate keyboard service is added only after that toggle is on and the mouse Report is subscribed. Turning the toggle off leaves already published services in place so the existing mouse bond is not torn down. If the pointer ever goes wrong again, turn English keyboard HID off in Settings, and do not reset Bluetooth or unpair the system Apple Watch.
 
 ## What is already confirmed, and what is not
 
@@ -57,6 +61,8 @@ Confirmed on more than one Mac: Watch BLE HID reports can move the system pointe
 
 The operator has confirmed that the Watch could control the iPhone while outdoors, several minutes away from the Mac and on a different Wi-Fi network. That is a real user confirmation; it has not been instrumented on this Mac.
 
-Not fully confirmed: typing dictation into a Mac text field through a separate keyboard HID service; a working mouse while no iPhone is nearby on Wi-Fi as a formal isolation test; every reconnect and restart combination; which listed Device N is the iPhone or the Mac without a local test.
+On the evening of 2026-11-10, after the local output-picker package was installed on the the development Mac, the operator said the Apple Watch was normal and could work. That acceptance does not separately confirm iPhone and Mac output, one after the other. On that Mac, `verify-hogp-mouse.sh` reported `NODE_OK`. Details: [evidence/home-mini-neutral-picker-2026-11-10.md](evidence/home-mini-neutral-picker-2026-11-10.md).
+
+Not fully confirmed: typing dictation into a Mac text field through a separate keyboard HID service; a working mouse while no iPhone is nearby on Wi-Fi as a formal isolation test; every reconnect and restart combination; which listed Device N is the iPhone or the Mac without a local test; a supported way to prevent Keyboard Setup Assistant while the keyboard service is present.
 
 Simulator checks cover UI and the system text-input callback only. They do not prove BLE HOGP, cursor movement, or speech recognition. See [SIMULATOR-CHECKS.md](SIMULATOR-CHECKS.md).

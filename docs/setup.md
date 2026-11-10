@@ -107,17 +107,18 @@ A still-valid pre-signed zip can be installed without a local certificate, but t
 
 ## 7. Install onto the Watch
 
-The install script waits for a `connected` developer tunnel and matches only the UDID in `Config/local_devices.env`. It will not install onto a different Watch.
+The install script waits for a `connected` developer tunnel and matches only the UDID in `Config/local_devices.env`. It will not install onto a different Watch. A `connected` list entry is not sufficient by itself: after the tunnel is listed, the script also probes CoreDevice details and DDI services. On 2026-11-10, two installs on a home Mac failed with “Failed to allocate RSD device” after the list said `connected`; the same package installed once those probes succeeded. Signing was not changed. See [evidence/home-mini-neutral-picker-2026-11-10.md](evidence/home-mini-neutral-picker-2026-11-10.md).
 
 ```bash
+./scripts/install-signed-watch-app.sh --check-ready   # probe only; does not install
 ./scripts/install-signed-watch-app.sh
 ```
 
-If the tunnel is not `connected`, the script prints what to do and exits. Typically:
+If the tunnel is not `connected`, or the details/DDI probe is not ready, the script prints what to do and exits. Typically:
 
 1. Bring the Watch close, wake and unlock it, and keep the screen on.
 2. Bring the paired iPhone close, unlock it, and join the same Wi-Fi if you can. A USB cable is not required.
-3. Run the script again when `devicectl` shows `connected`.
+3. Run `--check-ready`, then the installer, when those checks pass. Do not treat a stale `connected` list line as install-ready.
 
 A wireless install has succeeded with the iPhone nearby, unlocked, and on the same Wi-Fi, with no USB cable. That does not mean the iPhone is always required, and it does not prove install still works when no iPhone is nearby.
 
@@ -159,7 +160,7 @@ On 2026-11-10, a second Mac completed pairing and encryption, then after the gat
 | `check-signing-prereqs.sh --install-wwdr` | Login keychain password or Allow | Confirm. This writes WWDR G3, and does not create a Development certificate |
 | First `ship-encrypted-hogp.sh` | Keychain access / codesign | Confirm in the official dialog |
 | Watch / iPhone | Developer Mode, restart, Trust This Computer | Confirm on the device |
-| Install while the tunnel is down | No dialog; the script explains the steps | Wake and unlock the Watch, unlock the iPhone, same Wi-Fi, retry |
+| Install while the tunnel is down, or after a connected list entry if RSD/DDI is not ready | No dialog; the script explains the steps | Wake and unlock the Watch, unlock the iPhone, same Wi-Fi, then `--check-ready` before installing |
 | First HOGP use on this Mac | Bluetooth passkey or pairing confirmation | Confirm in the macOS system dialog. Do not reset Bluetooth |
 
 ## After setup
