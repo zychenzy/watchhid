@@ -29,6 +29,9 @@ struct ContentView: View {
     @EnvironmentObject private var phoneBridge: PhoneBridge
     @State private var showSettings = false
     @State private var dictationPresented = false
+    #if targetEnvironment(simulator)
+    @State private var simulatorCheckRan = false
+    #endif
     private var inputOverlayVisible: Bool { showSettings || dictationPresented || probe.dictationPreview != nil }
 
     var body: some View {
@@ -106,6 +109,9 @@ struct ContentView: View {
             }
             probe.prepareMacTouchpad()
             logStore.info("Large pad + dictation UI ready; auto-arm when Mac subscribed")
+            #if targetEnvironment(simulator)
+            await runSimulatorCheck()
+            #endif
         }
         .sheet(isPresented: Binding(
             get: { probe.dictationPreview != nil },
@@ -119,6 +125,28 @@ struct ContentView: View {
                 .environmentObject(probe)
         }
     }
+
+    #if targetEnvironment(simulator)
+    private func runSimulatorCheck() async {
+        guard !simulatorCheckRan else { return }
+        simulatorCheckRan = true
+        let args = ProcessInfo.processInfo.arguments
+        guard args.contains("--simulator-text-entry") || args.contains("--simulator-sample-preview") else { return }
+        try? await Task.sleep(for: .seconds(1))
+        if args.contains("--simulator-text-entry") {
+            logStore.info("SIMULATOR ONLY: invoking real system text entry; no ASR success implied")
+            startDictation()
+        } else {
+            logStore.info("SIMULATOR ONLY: synthetic String preview; not speech recognition")
+            probe.presentDictationReview(text: "SIMULATOR SAMPLE — not speech")
+            if args.contains("--simulator-dismiss-preview") {
+                try? await Task.sleep(for: .seconds(3))
+                probe.clearDictationPreview()
+                logStore.info("SIMULATOR ONLY: programmatic preview dismissal; touch input not simulated")
+            }
+        }
+    }
+    #endif
 
     private func startDictation() {
         guard let controller = WKApplication.shared().visibleInterfaceController else {
