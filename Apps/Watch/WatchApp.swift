@@ -40,6 +40,7 @@ struct ContentView: View {
                 .fill(probe.mouseEnabled
                       ? Color(red: 0.01, green: 0.025, blue: 0.07)
                       : Color(red: 0.03, green: 0.03, blue: 0.035))
+                .ignoresSafeArea()
                 .contentShape(Rectangle())
                 .gesture(
                     DragGesture(minimumDistance: 0)
@@ -53,15 +54,6 @@ struct ContentView: View {
 
             VStack(spacing: 0) {
                 HStack(spacing: 6) {
-                    Circle()
-                        .fill(probe.mouseEnabled ? Color.green : Color.gray)
-                        .frame(width: 7, height: 7)
-                    Text(probe.inputStatus)
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundStyle(.white.opacity(0.9))
-                        .lineLimit(1)
-                        .allowsHitTesting(false)
-                    Spacer(minLength: 0)
                     Button { showSettings = true } label: {
                         Image(systemName: "ellipsis.circle")
                             .font(.caption)
@@ -71,9 +63,19 @@ struct ContentView: View {
                     }
                     .buttonStyle(.plain)
                     .accessibilityIdentifier("pad-settings")
+                    Circle()
+                        .fill(probe.mouseEnabled ? Color.green : Color.gray)
+                        .frame(width: 7, height: 7)
+                    Text(probe.inputStatus)
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(.white.opacity(0.9))
+                        .lineLimit(1)
+                        .allowsHitTesting(false)
+                    Spacer(minLength: 0)
                 }
-                .padding(.horizontal, 6)
-                .padding(.top, 16)
+                .padding(.leading, 6)
+                // Leave the top-right corner clear for the system time.
+                .padding(.trailing, 52)
 
                 Spacer(minLength: 0)
                     .allowsHitTesting(false)
@@ -108,7 +110,7 @@ struct ContentView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .ignoresSafeArea()
+        .ignoresSafeArea(edges: .bottom)
         .onAppear { probe.setInputSceneActive(scenePhase == .active) }
         .onChange(of: inputOverlayVisible) { _, blocked in probe.setInputUIBlocked(blocked) }
         .onChange(of: scenePhase) { _, phase in probe.setInputSceneActive(phase == .active) }
