@@ -35,6 +35,8 @@ Local-only (gitignored): `Config/Developer.xcconfig`, `Config/local_devices.env`
 
 ## Build / sign
 
+Setting up Xcode and a signing account on a new Mac: [`docs/SETUP.zh-CN.md`](docs/SETUP.zh-CN.md). The Mac login / iCloud account may differ from the Xcode signing Apple ID; do not switch the system account just to sign. Installing a still-valid already-signed Watch `.app` does not require copying private keys from another Mac.
+
 Unsigned simulator compile:
 
 ```bash
@@ -82,7 +84,7 @@ python3 scripts/test_assess_live_read.py
 
 ## Docs
 
-See [`docs/INDEX.md`](docs/INDEX.md). Raw syslog/screenshot/crash packages stay under local `build/diagnostics/` and are not part of the git tree.
+New Mac prerequisites, official Xcode compatibility, signing vs installing an already-signed package, and Watch pairing: [`docs/SETUP.zh-CN.md`](docs/SETUP.zh-CN.md). Index: [`docs/INDEX.md`](docs/INDEX.md). Raw syslog/screenshot/crash packages stay under local `build/diagnostics/` and are not part of the git tree.
 
 ## Explicitly out of scope
 
