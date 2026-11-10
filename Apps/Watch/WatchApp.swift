@@ -35,10 +35,12 @@ struct ContentView: View {
     private var inputOverlayVisible: Bool { showSettings || dictationPresented }
 
     var body: some View {
-        RoundedRectangle(cornerRadius: 16)
-            .fill(probe.mouseEnabled ? Color.blue.opacity(0.28) : Color.gray.opacity(0.15))
+        Rectangle()
+            .fill(probe.mouseEnabled
+                  ? Color(red: 0.05, green: 0.11, blue: 0.24)
+                  : Color(red: 0.08, green: 0.08, blue: 0.10))
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .contentShape(RoundedRectangle(cornerRadius: 16))
+            .contentShape(Rectangle())
             .gesture(
                 DragGesture(minimumDistance: 0)
                     .onChanged { value in
@@ -55,6 +57,7 @@ struct ContentView: View {
                         .frame(width: 7, height: 7)
                     Text(probe.inputStatus)
                         .font(.system(size: 10))
+                        .foregroundStyle(.white.opacity(0.9))
                         .lineLimit(1)
                         .minimumScaleFactor(0.7)
                         .allowsHitTesting(false)
@@ -62,19 +65,20 @@ struct ContentView: View {
                     Button { showSettings = true } label: {
                         Image(systemName: "ellipsis.circle")
                             .font(.caption)
+                            .foregroundStyle(.white)
                     }
                     .buttonStyle(.plain)
                     .accessibilityIdentifier("pad-settings")
                 }
-                .padding(.horizontal, 4)
-                .padding(.top, 1)
+                .padding(.horizontal, 6)
+                .padding(.top, 16)
             }
             .overlay(alignment: .bottom) {
                 VStack(spacing: 2) {
                     if !probe.lastTypeStatus.isEmpty {
                         Text(probe.lastTypeStatus)
                             .font(.system(size: 9))
-                            .foregroundStyle(.secondary)
+                            .foregroundStyle(.white.opacity(0.7))
                             .lineLimit(1)
                             .allowsHitTesting(false)
                     }
@@ -97,9 +101,9 @@ struct ContentView: View {
                     .accessibilityIdentifier(probe.keyboardBusy ? "dictation-cancel" : "dictation-button")
                     .accessibilityHint(probe.keyboardBusy ? L10n.string("dictation.cancel_hint") : L10n.string("dictation.hint"))
                 }
-                .padding(.bottom, 1)
+                .padding(.bottom, 2)
             }
-            .ignoresSafeArea(edges: .bottom)
+            .ignoresSafeArea()
         .onAppear { probe.setInputSceneActive(scenePhase == .active) }
         .onChange(of: inputOverlayVisible) { _, blocked in probe.setInputUIBlocked(blocked) }
         .onChange(of: scenePhase) { _, phase in probe.setInputSceneActive(phase == .active) }
