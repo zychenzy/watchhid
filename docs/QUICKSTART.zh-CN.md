@@ -17,7 +17,7 @@
 - 重装或失活时仍可能出现 ATT242，导致 Mac 尚未重新创建鼠标节点。若指针不动，先退出并手动重新打开 WatchHID；若仍失败，保留现场日志供排查。**不要为了试用取消配对、清蓝牙缓存或重置系统蓝牙。**
 - 手表离开 Mac 范围后，远程开发连接不可用是正常的，不代表 USB 运行独立性失效。
 
-新 Mac 上要先具备完整 Xcode 和手表开发连接，才能安装这些已签名包；系统登录账号可以和 Xcode 签名用的 Apple ID 不同。详见 [SETUP.zh-CN.md](SETUP.zh-CN.md)。
+新 Mac 上要先具备完整 Xcode 和手表开发连接，才能安装这些已签名包；系统登录账号可以和 Xcode 签名用的 Apple ID 不同。开发安装通道和蓝牙连接不是一回事：手表蓝牙已连接时，`devicectl` 仍可能是 `unavailable`。这时把手表点亮解锁，把配对的 iPhone 拿近并连同一 Wi-Fi（不必插线），等到手表显示为 `connected`，再运行 `./scripts/install-signed-watch-app.sh`。如果这台电脑还没有这条手表的加密 HOGP 绑定，不要从其他电脑复制蓝牙绑定；先在能签名的电脑上运行 `./scripts/ship-encrypted-hogp.sh`，把 zip 拷过来再安装。打开应用并确认配对后，跑 `./scripts/verify-hogp-mouse.sh`。本机签名只在这台电脑负责构建时才是必要步骤。详见 [SETUP.zh-CN.md](SETUP.zh-CN.md) 和项目 skill [watchhid-new-mac-hogp](../.cursor/skills/watchhid-new-mac-hogp/SKILL.md)。
 
 ## 本地包与回滚
 Mac mini：`~/projects/watchhid/build/diagnostics/recovery-root/`

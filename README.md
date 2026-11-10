@@ -56,7 +56,7 @@ xcrun devicectl device install app --device "$WATCH_UDID" \
   build/DerivedData-nudge/Build/Products/Debug-watchos/WatchHIDWatchApp.app
 ```
 
-Free Apple ID signing typically needs manual re-sign about every 7 days. Prefer Xcode Run if `devicectl` activation is flaky. Phone USB is **not** required for the Mac BLE HID path once Watch is installed; future developer installs may still need normal paired-device proximity/connectivity.
+Free Apple ID signing typically needs manual re-sign about every 7 days. Prefer Xcode Run if `devicectl` activation is flaky. Phone USB is **not** required for the Mac BLE HID path once Watch is installed, and it is not required for a wireless developer install either; the Watch and the paired iPhone should be nearby, unlocked, and preferably on the same Wi-Fi until `devicectl` shows the Watch as `connected`. Use `./scripts/install-signed-watch-app.sh` rather than calling `devicectl` by hand. A Bluetooth-connected Watch is not the same as a connected developer tunnel.
 
 ## Use on Mac (owner-verified flow)
 
@@ -84,7 +84,7 @@ python3 scripts/test_assess_live_read.py
 
 ## Docs
 
-New Mac prerequisites, official Xcode compatibility, signing vs installing an already-signed package, and Watch pairing: [`docs/SETUP.zh-CN.md`](docs/SETUP.zh-CN.md). Index: [`docs/INDEX.md`](docs/INDEX.md). Raw syslog/screenshot/crash packages stay under local `build/diagnostics/` and are not part of the git tree.
+New Mac prerequisites, when local signing is required, developer-tunnel vs Bluetooth, and the no-bond encrypted HOGP path: [`docs/SETUP.zh-CN.md`](docs/SETUP.zh-CN.md). Reusable steps for a later owner or agent: [`.cursor/skills/watchhid-new-mac-hogp/SKILL.md`](.cursor/skills/watchhid-new-mac-hogp/SKILL.md). Scripts: `scripts/ship-encrypted-hogp.sh`, `scripts/install-signed-watch-app.sh`, `scripts/verify-hogp-mouse.sh`. Index: [`docs/INDEX.md`](docs/INDEX.md). Raw syslog/screenshot/crash packages stay under local `build/diagnostics/` and are not part of the git tree.
 
 ## Explicitly out of scope
 

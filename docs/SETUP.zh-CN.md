@@ -90,13 +90,31 @@ security cms -D -i ./candidate/WatchHIDWatchApp.app/embedded.mobileprovision
 
 重点看：签名是否有效、证书是否仍是 Apple Development、描述文件是否过期、`ProvisionedDevices` 是否包含**这块**手表。只要这些成立，就不需要导入原构建机的私钥。
 
-手表已在 `devicectl list devices` 中可见后：
+手表已在 `devicectl list devices` 中可见后，优先用脚本安装并拉起应用：
 
 ```bash
-xcrun devicectl device install app --device "$WATCH_UDID"   ./candidate/WatchHIDWatchApp.app
+./scripts/install-signed-watch-app.sh ./candidate/WatchHIDWatchApp.app
+# 也可以直接给 zip：
+# ./scripts/install-signed-watch-app.sh ./WatchHID-encrypted-hogp.zip
 ```
 
-`WATCH_UDID` 使用本机 gitignore 配置或 `devicectl` 当时列出的标识，不要把个人 UDID 写进文档。免费签名过期、或这只手表不在描述文件里时，应改为第 4 节在本机重新签名，而不是拷贝私钥。
+`WATCH_UDID` 只放在本机 gitignore 的 `Config/local_devices.env`，不要把个人 UDID 写进文档或打到聊天。免费签名过期、或这只手表不在描述文件里时，应改为第 4 节在本机重新签名，而不是拷贝私钥。
+
+### 开发安装通道不是蓝牙连接
+
+蓝牙菜单里 Apple Watch 已连接（甚至显示 HID BLE），不等于可以把包装上手表。`devicectl` 走的是 CoreDevice 开发通道，常见状态是：
+
+- `connected`：可以安装和拉起应用；
+- `available (paired)` 但隧道是断开的：列表里能看到手表，安装往往会在协商隧道时超时；
+- `unavailable`：现在装不了。手表仍可能正通过蓝牙连着这台 Mac。
+
+通道不可用时，同时做这些，再重新运行安装脚本：
+
+1. 把手表拿近这台 Mac，点亮并解锁，保持屏幕亮着；
+2. 把配对的 iPhone 也拿近并解锁，尽量连同一 Wi-Fi；不必插 USB 线；
+3. 等到 `devicectl list devices` 显示这只手表为 `connected`。不要为此重置系统蓝牙，或取消手表的系统配对。
+
+把已签名 zip 从开发机拷到这台电脑时，用普通文件拷贝即可；两台电脑都开着时，也可以用远程桌面或 UU 的传文件。不要拷贝其他电脑的蓝牙偏好设置或钥匙串。重装后，旧的 HID BLE 会话可能会断掉，需要再打开一次 WatchHID。
 
 ## 7. 运行 HOGP / 触控板
 
@@ -129,12 +147,54 @@ xcrun devicectl device install app --device "$WATCH_UDID"   ./candidate/WatchHID
 |---|---|---|
 | 指针不动，但蓝牙或开发器显示已连接 | 首次在新 Mac 上使用时，若系统弹出蓝牙配对确认，先确认。确认之后仍可能因链路未加密或 ATT242 等错误，导致系统没有创建可用的鼠标节点。先退出并在手表上手动重新打开应用，再短滑；只完成弹窗并不等于指针已经可用。 | 不要取消手表的系统配对、清蓝牙缓存、重置系统蓝牙或关安全防护。 |
 | Mac 锁屏 | 锁屏时不要把本机探测失败写成应用损坏。先解锁再测指针。 | 不要为了测试绕过锁屏或改安全设置。 |
-| `devicectl` 看不到手表 | 先确认完整 Xcode 已选中并完成 first launch、手表已开 Developer Mode、已信任这台电脑，且手表在附近并已唤醒。 | 同样不要重置蓝牙或取消系统配对来“打通”开发连接。 |
+| `devicectl` 看不到手表，或列表是 `unavailable` / 只有 `available (paired)` | 开发安装通道和蓝牙不是一回事。先确认完整 Xcode 已选中并完成 first launch、手表已开 Developer Mode、已信任这台电脑；把手表拿近、点亮并解锁；把配对的 iPhone 拿近并解锁，尽量连同一 Wi-Fi（不必插线）。等到状态是 `connected` 再安装。可用 `./scripts/install-signed-watch-app.sh`，通道不可用时它会打印这份清单。 | 不要重置蓝牙或取消系统配对来“打通”开发连接。也不要把蓝牙已连接当成已经可以装包。 |
 | 已签名包装不上或运行被拒 | 先看描述文件是否过期、这只手表是否在设备列表中。过期就在本机用开发 Apple ID 重新签名。 | 不要从其他 Mac 复制私钥或登录 token。 |
 | 重装后偶发连不上鼠标 | 静态设备信息修复过一类初始化问题，但不是所有前台/启动时序的完整保证。保留现场日志再查。 | 不要把模拟器通过当成真机已恢复。 |
 
 更详细的恢复说明与回归表见 [HOGP-RECOVERY.md](HOGP-RECOVERY.md)。
 
-## 10. 回滚
+## 10. 本机签名什么时候是必要步骤
+
+- 只把仍然有效的已签名包装到手表：这台 Mac **不需要**自己的签名证书，也不要从其他电脑拷私钥。
+- 要在这台 Mac 上重新构建或改配方（例如下面的加密 HOGP 包）：本机签名就是必要步骤。先在 Xcode > Settings > Accounts 登录开发用 Apple ID，把 team 写入 gitignore 的 `Config/Developer.xcconfig`，安装 `xcodegen`（`brew install xcodegen`），再运行第 11 节的脚本。第一次构建会向该账号申请 Apple Development 证书和描述文件，可能弹出系统或 Xcode 确认；在官方对话框里完成，不要把密码或验证码发到聊天。本机还看不到 Apple Development 证书时，不要以为命令行已经能签。
+- 也可以在已经有证书的开发机上签名，把 zip 拷到新 Mac 再安装。新 Mac 仍然必须在**本地**完成 HID 加密绑定。
+
+## 11. 没有现成 HOGP 绑定时怎么快速做
+
+其他电脑上已经成功的加密 HOGP 绑定**不能**复用到新 Mac。它只存在于「这只手表 ↔ 那台电脑的蓝牙控制器」这一对设备之间；系统 Apple Watch 配对或 iCloud 也不会把这份密钥带过来。不要复制其他电脑的蓝牙偏好设置或钥匙串来“转移”绑定，以免弄乱两边已有的配对。
+
+能复用的是方法。在**能签名**的 Mac 上（已有 `Config/Developer.xcconfig` 和 Apple Development 证书）执行：
+
+```bash
+./scripts/ship-encrypted-hogp.sh
+```
+
+如果这台电脑已经能看到手表：
+
+```bash
+./scripts/ship-encrypted-hogp.sh --install
+```
+
+脚本会构建并打包要求加密读写/通知的配方 `standard128-encrypted`。把 zip 拷到要当鼠标主机的那台 Mac 后：
+
+```bash
+./scripts/install-signed-watch-app.sh
+```
+
+脚本会在开发通道为 `connected` 时安装并拉起 WatchHID；通道不可用时会说明要先亮起手表、把配对 iPhone 放在同一 Wi-Fi（不必插线），然后退出。装好后：
+
+1. 保持手表屏幕亮着。
+2. 若系统弹出蓝牙配对确认，在对话框里确认。不要重置系统蓝牙，也不要取消手表的系统配对。
+3. 短滑触控板，再运行：
+
+```bash
+./scripts/verify-hogp-mouse.sh
+```
+
+通过标准是脚本报告已出现 `WatchHID`，并且指针会移动。只看到蓝牙菜单里 Apple Watch 已连接，或只点过配对弹窗，都还不够。
+
+给后续接手的人也可以直接看项目 skill：[.cursor/skills/watchhid-new-mac-hogp/SKILL.md](../.cursor/skills/watchhid-new-mac-hogp/SKILL.md)。
+
+## 12. 回滚
 
 原开发机本地目录 `build/diagnostics/recovery-root/` 会保留已签名归档（具体文件名以当时的 `RELEASE-MANIFEST.json` 和 [QUICKSTART.zh-CN.md](QUICKSTART.zh-CN.md) 为准），例如带启用按钮的成功旧版、大触控板基线、以及当前候选。安装回滚包的方式与第 6 节相同：校验签名和描述文件，再 `devicectl` 安装。不要为了回滚去推送仓库或合并主分支。
