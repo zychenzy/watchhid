@@ -1,3 +1,8 @@
-// Copy to Developer.xcconfig (gitignored) before signed device builds.
-// Free personal team ID is configuration, not a credential.
+// Copy to Config/Developer.xcconfig before a signed device build:
+//   cp Config/Developer.xcconfig.example Config/Developer.xcconfig
+// Then set DEVELOPMENT_TEAM to the team ID shown in Xcode > Settings > Accounts
+// for the project Apple ID. Do not invent a new team.
+// Config/Developer.xcconfig is gitignored and must stay untracked.
+// Team ID is configuration, not a credential; still do not commit the local file.
+// Run ./scripts/check-signing-prereqs.sh before ./scripts/ship-encrypted-hogp.sh.
 DEVELOPMENT_TEAM = YOUR_TEAM_ID
