@@ -50,18 +50,22 @@ xcrun devicectl list devices
 
 `sudo` 和首次许可会弹出系统自己的管理员密码/许可窗口，在本机对话框中确认即可。`xcode-select` 与 first launch 完成前，不要指望 CoreDevice 已经可用。
 
-## 4. 免费账号签名（本机构建时）
+## 4. 在新 Mac 上创建签名身份（本机构建时）
 
-若只需安装仍然有效的已签名包，可先跳过本节，见第 6 节。
+若只需安装仍然有效的已签名包，可先跳过本节，见第 6 节。安装有效预签名包不需要本机证书，也不要从其他电脑拷私钥或登录 token。
 
-若要在这台 Mac 上重新 build / sign：
+要在这台新 Mac 上重新构建或改配方，需要本机自己的 Apple Development 证书。不要从另一台电脑复制钥匙串私钥。这台 Mac 的系统登录 / iCloud 账号，可以和 Xcode 里用于签名的 Apple ID 不是同一个；不要为了开发签名去退出或更换 macOS 登录。使用项目已经在用的那个开发 Apple ID、同一个 team。
+
+2026-11-10 这台 MacBook 当时没有可用的 Apple Development 身份，所以当天 11:54 的加密包是在 Mac mini 上签名后再拷过来安装的。复用这条路径时，不必为此回到原先的签名机；可以在新 Mac 上为同一账号创建新的本机证书。
 
 1. 保持当前 macOS / iCloud 登录不变。
-2. 打开 Xcode > Settings > Accounts，添加**此前用于本项目的免费 Apple ID（个人 team）**。按系统提示完成登录和双重验证；不要在聊天里发送密码或验证码。
-3. 把 `Config/Developer.xcconfig.example` 复制为 gitignore 的 `Config/Developer.xcconfig`，填入该账号在 Xcode 中显示的 `DEVELOPMENT_TEAM`。不要提交这个文件，也不要从别的电脑拷钥匙串私钥。
-4. 免费个人 team 的开发描述文件有效期通常约 7 天，过期后需要在本机用同一账号重新签发，而不是迁移旧私钥。
-
-然后按仓库根目录 README 的 signed Watch device build 流程：`xcodegen generate`，再 `xcodebuild` / Xcode Run。`devicectl` 激活不稳定时，优先用 Xcode 直接 Run 到手表。
+2. 打开 **Xcode > Settings > Accounts**，添加此前用于本项目的开发 Apple ID（免费个人 team 即可）。按系统提示完成登录和双重验证；不要在聊天里发送密码或验证码。Apple ID 或权限相关的系统提示，需要你在这台 Mac 上亲自确认。
+3. 选中该 Apple ID，再选中对应的 team，打开 **Manage Certificates…**（管理证书）。用 “+” 添加 **Apple Development**。不要去找文档里没有写到的菜单项。创建成功后，私钥留在这台 Mac 的钥匙串里，只属于这台电脑。
+4. 不要为了“腾名额”去吊销另一台电脑上已有的证书，除非你明确同意。吊销会使那台电脑无法继续签名。若 Xcode 提示该 team 的证书数量已达上限，先停下来，不要自行吊销。
+5. 把 `Config/Developer.xcconfig.example` 复制为 gitignore 的 `Config/Developer.xcconfig`，填入该账号在 Xcode 中显示的 `DEVELOPMENT_TEAM`。不要提交这个文件。
+6. 安装 `xcodegen`（`brew install xcodegen`），在仓库根目录运行 `xcodegen generate`。
+7. 再运行第 11 节的 `./scripts/ship-encrypted-hogp.sh`（本机已能看到手表时也可用 `--install`）。构建时 Xcode / `xcodebuild` 可能会为此账号刷新开发描述文件；描述文件必须仍包含这只手表。不要把 UDID、`ProvisionedDevices` 或证书序列号打印到聊天或提交到 git。查看过期和是否包含已配置手表时，用 `python3 scripts/watchhid_scriptlib.py provision-info ./WatchHIDWatchApp.app`。第一次构建可能弹出钥匙串访问或签名确认，在官方对话框里完成。本机还看不到 Apple Development 证书时，不要以为命令行已经能签。
+8. 免费个人 team 的开发描述文件有效期通常约 7 天，过期后在本机用同一账号重新签发即可。这种需要定期手动重签的免费签名方式是可以接受的。
 
 ## 5. 手表 Developer Mode 与开发配对
 
@@ -169,7 +173,8 @@ python3 scripts/watchhid_scriptlib.py provision-info ./candidate/WatchHIDWatchAp
 | 指针不动，但蓝牙或开发器显示已连接 | 先确认 WatchHID 在手表前台，并能看见状态。若系统弹出 passkey / 配对确认，先在这台 Mac 上完成确认。只完成弹窗、或只看到已连接的 “ZY的Apple Watch” / HID BLE，都不等于项目成功。若状态一直是 `等待 Mac 系统订阅`，源码要求订阅者必须是写死的那一个 Mac 中央标识，这台新 Mac 的订阅不一定会被当成就绪。先保留现场，不要拆掉刚刚完成的绑定。 | 不要取消手表的系统配对、清蓝牙缓存、重置系统蓝牙或关安全防护。 |
 | Mac 锁屏 | 锁屏时不要把本机探测失败写成应用损坏。先解锁再测指针。 | 不要为了测试绕过锁屏或改安全设置。 |
 | `devicectl` 看不到手表，或列表是 `unavailable` / 只有 `available (paired)` | 开发安装通道和蓝牙不是一回事。先确认完整 Xcode 已选中并完成 first launch、手表已开 Developer Mode、已信任这台电脑；把手表拿近、点亮并解锁；把配对的 iPhone 拿近并解锁，尽量连同一 Wi-Fi（不必插线）。等到状态是 `connected` 再安装。可用 `./scripts/install-signed-watch-app.sh`，通道不可用时它会打印这份清单。 | 不要重置蓝牙或取消系统配对来“打通”开发连接。也不要把蓝牙已连接当成已经可以装包。 |
-| 已签名包装不上或运行被拒 | 先看描述文件是否过期、这只手表是否在设备列表中。过期就在本机用开发 Apple ID 重新签名。 | 不要从其他 Mac 复制私钥或登录 token。 |
+| 已签名包装不上或运行被拒 | 先看描述文件是否过期、这只手表是否在设备列表中。过期就在本机用开发 Apple ID 重新签名，见第 4 节。 | 不要从其他 Mac 复制私钥或登录 token。 |
+| 这台新 Mac 还没有签名证书 | 可以在本机为同一开发 Apple ID 创建新的 Apple Development 证书，见第 4 节。2026-11-10 这台 MacBook 当时没有可用身份，所以 11:54 的包是在 mini 上签的；以后不必因此回到原先的签名机。 | 不要从其他电脑拷私钥。不要为了腾名额吊销另一台电脑的证书，除非你明确同意。 |
 | 重装后偶发连不上鼠标 | 静态设备信息修复过一类初始化问题，但不是所有前台/启动时序的完整保证。保留现场日志再查。 | 不要把模拟器通过当成真机已恢复。 |
 
 更详细的恢复说明与回归表见 [HOGP-RECOVERY.md](HOGP-RECOVERY.md)。
@@ -177,14 +182,14 @@ python3 scripts/watchhid_scriptlib.py provision-info ./candidate/WatchHIDWatchAp
 ## 10. 本机签名什么时候是必要步骤
 
 - 只把仍然有效的已签名包装到手表：这台 Mac **不需要**自己的签名证书，也不要从其他电脑拷私钥。
-- 要在这台 Mac 上重新构建或改配方（例如下面的加密 HOGP 包）：本机签名就是必要步骤。先在 Xcode > Settings > Accounts 登录开发用 Apple ID，把 team 写入 gitignore 的 `Config/Developer.xcconfig`，安装 `xcodegen`（`brew install xcodegen`），再运行第 11 节的脚本。第一次构建会向该账号申请 Apple Development 证书和描述文件，可能弹出系统或 Xcode 确认；在官方对话框里完成，不要把密码或验证码发到聊天。本机还看不到 Apple Development 证书时，不要以为命令行已经能签。
-- 也可以在已经有证书的开发机上签名，把 zip 拷到新 Mac 再安装。新 Mac 仍然必须在**本地**完成 HID 加密绑定。
+- 要在这台 Mac 上重新构建或改配方（例如下面的加密 HOGP 包，或尚未装到手表上的输入门修改）：本机签名就是必要步骤。按第 4 节在这台电脑上为同一开发 Apple ID 创建 Apple Development 证书，写入 gitignore 的 `Config/Developer.xcconfig`，安装 `xcodegen`，再运行第 11 节的脚本。不必回到原先那台已经能签名的电脑，也不要从那台电脑拷私钥。本机还看不到 Apple Development 证书时，不要以为命令行已经能签。
+- 也可以仍在已经有证书的开发机上签名，把 zip 拷到新 Mac 再安装。新 Mac 仍然必须在**本地**完成 HID 加密绑定。这两种做法都有效；在新 Mac 上创建证书，是为了以后不必依赖原先的签名机。
 
 ## 11. 没有可复用的加密 HOGP 绑定时走哪条路径
 
 其他电脑上已经成功的加密 HOGP 绑定**不能**复用到新 Mac。它只存在于「这只手表 ↔ 那台电脑的蓝牙控制器」这一对设备之间；系统 Apple Watch 配对或 iCloud 也不会把这份密钥带过来。不要复制其他电脑的蓝牙偏好设置或钥匙串来“转移”绑定，以免弄乱两边已有的配对。
 
-能复用的是方法，不是密钥。下面这条路径可以较快地重新构建并安装加密配方候选。2026-11-10 它已在这台新 Mac 上完成配对和加密，并创建了 HID 设备，但还没有得到项目约定的 WatchHID 身份，也没有指针移动，因此不能写成快速、可靠的成功方案。在**能签名**的 Mac 上（已有 `Config/Developer.xcconfig` 和 Apple Development 证书）执行：
+能复用的是方法，不是密钥。下面这条路径可以较快地重新构建并安装加密配方候选。2026-11-10 它已在这台新 Mac 上完成配对和加密，并创建了 HID 设备，但还没有得到项目约定的 WatchHID 身份，也没有指针移动，因此不能写成快速、可靠的成功方案。若这台电脑还没有签名身份，先按第 4 节在本机创建 Apple Development 证书，不必回到原先的签名机。准备好 `Config/Developer.xcconfig` 和本机证书后执行：
 
 ```bash
 ./scripts/ship-encrypted-hogp.sh
@@ -212,7 +217,7 @@ python3 scripts/watchhid_scriptlib.py provision-info ./candidate/WatchHIDWatchAp
 ./scripts/verify-hogp-mouse.sh
 ```
 
-`./scripts/verify-hogp-mouse.sh` 通过只表示同一 IOHID 节点上出现了 `WatchHID` / `Ultra2-R1` 和鼠标/指针 Usage，并不表示指针移动已经通过。回来验收还需要你在安全桌面上亲眼看见指针移动。只看到蓝牙菜单里 Apple Watch 已连接（哪怕是 HID BLE）、只点过配对弹窗，或手表仍显示 `等待 Mac 系统订阅`，都还不够。2026-11-10 在这台新 Mac 上，配对和加密已经成功并创建了 HID 设备，但身份是系统 Apple Watch，指针也没有移动；详情见 [new-mac-hogp-2026-11-10.zh-CN.md](new-mac-hogp-2026-11-10.zh-CN.md)。下一步若要改输入门（不再钉在另一个 Mac 的中央标识上）或核对身份/PnP，需要在能签名的电脑上重新出包，而不是重置蓝牙。
+`./scripts/verify-hogp-mouse.sh` 通过只表示同一 IOHID 节点上出现了 `WatchHID` / `Ultra2-R1` 和鼠标/指针 Usage，并不表示指针移动已经通过。回来验收还需要你在安全桌面上亲眼看见指针移动。只看到蓝牙菜单里 Apple Watch 已连接（哪怕是 HID BLE）、只点过配对弹窗，或手表仍显示 `等待 Mac 系统订阅`，都还不够。2026-11-10 在这台新 Mac 上，配对和加密已经成功并创建了 HID 设备，但身份是系统 Apple Watch，指针也没有移动；详情见 [new-mac-hogp-2026-11-10.zh-CN.md](new-mac-hogp-2026-11-10.zh-CN.md)。输入门的源码修改已在本分支，但尚未签名安装到手表；身份和指针移动仍待验证。不要重置刚刚完成的绑定。若要在这台电脑上出包，按第 4 节创建本机证书后运行上面的脚本。
 
 给后续接手的人也可以直接看项目 skill：[.cursor/skills/watchhid-new-mac-hogp/SKILL.md](../.cursor/skills/watchhid-new-mac-hogp/SKILL.md)。
 

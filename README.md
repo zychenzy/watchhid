@@ -35,7 +35,7 @@ Local-only (gitignored): `Config/Developer.xcconfig`, `Config/local_devices.env`
 
 ## Build / sign
 
-Setting up Xcode and a signing account on a new Mac: [`docs/SETUP.zh-CN.md`](docs/SETUP.zh-CN.md). The Mac login / iCloud account may differ from the Xcode signing Apple ID; do not switch the system account just to sign. Installing a still-valid already-signed Watch `.app` does not require copying private keys from another Mac.
+Setting up Xcode and a signing identity on a new Mac: [`docs/SETUP.zh-CN.md`](docs/SETUP.zh-CN.md) §4. The Mac login / iCloud account may differ from the Xcode signing Apple ID; do not switch the system account just to sign. Use the existing developer Apple ID and the same team. Create an **Apple Development** certificate on this Mac via Xcode > Settings > Accounts > the team > Manage Certificates… > “+”; the private key stays in this Mac’s Keychain. Do not copy private keys from another Mac, and do not revoke another machine’s certificate just to make room unless the owner explicitly approves. Installing a still-valid already-signed Watch `.app` does not require a local certificate.
 
 Unsigned simulator compile:
 
@@ -86,7 +86,7 @@ python3 scripts/test_assess_live_read.py
 
 ## Docs
 
-New Mac prerequisites, when local signing is required, developer-tunnel vs Bluetooth, and the encrypted HOGP path (pairing and encryption evidenced on a new Mac on 2026-11-10; WatchHID identity and pointer movement still open, so not yet a quickly reliable success): [`docs/SETUP.zh-CN.md`](docs/SETUP.zh-CN.md). Same-day evidence: [`docs/new-mac-hogp-2026-11-10.zh-CN.md`](docs/new-mac-hogp-2026-11-10.zh-CN.md). Reusable steps: [`.cursor/skills/watchhid-new-mac-hogp/SKILL.md`](.cursor/skills/watchhid-new-mac-hogp/SKILL.md). Scripts: `scripts/ship-encrypted-hogp.sh`, `scripts/install-signed-watch-app.sh`, `scripts/verify-hogp-mouse.sh`. Return checklist: [`docs/RETURN-CHECKLIST.zh-CN.md`](docs/RETURN-CHECKLIST.zh-CN.md). Index: [`docs/INDEX.md`](docs/INDEX.md). Raw syslog/screenshot/crash packages stay under local `build/diagnostics/` and are not part of the git tree.
+New Mac prerequisites, when local signing is required, developer-tunnel vs Bluetooth, how to create an Apple Development certificate on a new Mac, and the encrypted HOGP path (pairing and encryption evidenced on a new Mac on 2026-11-10; WatchHID identity and pointer movement still open, so not yet a quickly reliable success): [`docs/SETUP.zh-CN.md`](docs/SETUP.zh-CN.md). Same-day evidence: [`docs/new-mac-hogp-2026-11-10.zh-CN.md`](docs/new-mac-hogp-2026-11-10.zh-CN.md). Reusable steps: [`.cursor/skills/watchhid-new-mac-hogp/SKILL.md`](.cursor/skills/watchhid-new-mac-hogp/SKILL.md). Scripts: `scripts/ship-encrypted-hogp.sh`, `scripts/install-signed-watch-app.sh`, `scripts/verify-hogp-mouse.sh`. Return checklist: [`docs/RETURN-CHECKLIST.zh-CN.md`](docs/RETURN-CHECKLIST.zh-CN.md). Index: [`docs/INDEX.md`](docs/INDEX.md). Raw syslog/screenshot/crash packages stay under local `build/diagnostics/` and are not part of the git tree.
 
 ## Explicitly out of scope
 

@@ -31,7 +31,7 @@
 
 ## 当前已证实 / 仍待验证
 
-已证实：这台新 Mac 上加密路径可以走完 passkey 确认、启用加密，并由 BTLEServer 创建 HID 设备。源码里 `macInputReady` 和日常鼠标通知还钉在原先那台 mini 的中央标识上（不要写出这个标识），所以 `等待 Mac 系统订阅` 并不表示这台 Mac 的订阅已被应用接受。
+已证实：这台新 Mac 上加密路径可以走完 passkey 确认、启用加密，并由 BTLEServer 创建 HID 设备。当天装在手表上的那一版里，`macInputReady` 和日常鼠标通知还钉在原先那台 mini 的中央标识上（不要写出这个标识），所以当时的 `等待 Mac 系统订阅` 并不表示这台 Mac 的订阅已被应用接受。接受当前订阅者的源码修改已在本分支，但尚未签名安装到手表。
 
 仍待验证：
 
@@ -40,6 +40,6 @@
 - 这条路径是否快速、可靠
 - 附近没有 iPhone 时（无线隔离）开发通道是否仍可安装；11:54 的无 USB 成功安装发生在同一 Wi-Fi 且 iPhone 已解锁时，不能推广成“永远不需要 iPhone”
 
-当前已签名加密包的免费描述文件有效期到 2026-11-15 22:10（北京时间，Asia/Shanghai）。本机没有签名证书；若下一步要改输入门或身份/PnP，应在已有证书的开发机上运行 `./scripts/ship-encrypted-hogp.sh`，再把 zip 拷回来安装。不要用重置蓝牙代替改代码。安装脚本默认以 zip 为准，避免误选陈旧解压目录。
+当前已签名加密包的免费描述文件有效期到 2026-11-15 22:10（北京时间，Asia/Shanghai）。若要在这台电脑上把本分支的修改签出来，按 [SETUP.zh-CN.md](SETUP.zh-CN.md) 第 4 节创建本机 Apple Development 证书，再运行 `./scripts/ship-encrypted-hogp.sh`；不必回到原先的签名机，也不要拷私钥。不要用重置蓝牙代替这次安装验证。安装脚本默认以 zip 为准，避免误选陈旧解压目录。
 
 更完整的证据/推断分界见 [SETUP.zh-CN.md](SETUP.zh-CN.md) 和 [new-mac-hogp-2026-11-10.zh-CN.md](new-mac-hogp-2026-11-10.zh-CN.md)。听写步骤不是这次回来的最低要求，需要时再看 [QUICKSTART.zh-CN.md](QUICKSTART.zh-CN.md)。

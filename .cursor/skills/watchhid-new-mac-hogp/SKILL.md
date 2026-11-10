@@ -26,25 +26,25 @@ description: 在新 Mac 上安装或启用 WatchHID 系统鼠标，或这台电�
 ## 什么时候需要本机签名
 
 - 只安装仍然有效的已签名包：这台 Mac 不需要自己的证书，也不要拷私钥。
-- 要在这台 Mac 上重新构建或改配方（包括加密 HOGP 包，或下面说的输入门/身份修改）：本机签名是必要步骤。Xcode > Settings > Accounts 登录项目用的开发 Apple ID，写入 `Config/Developer.xcconfig`，安装 `xcodegen`，第一次构建可能弹出系统或 Xcode 确认。
-- 也可以在已经有证书的开发机上签名，把 zip 拷到新 Mac 再安装。新 Mac 仍然必须在本地完成 HID 侧的绑定过程（如果需要的话）。这不是“把 mini 的密钥复制过来”。
+- 要在这台 Mac 上重新构建或改配方（包括加密 HOGP 包，或把本分支里尚未装到手表的修改签出来）：本机签名是必要步骤。不必回到原先的签名机，也不要从那台电脑拷私钥。按 [docs/SETUP.zh-CN.md](../../../docs/SETUP.zh-CN.md) 第 4 节：保持 macOS 登录不变，用项目已有的开发 Apple ID（可与系统登录不同）在 **Xcode > Settings > Accounts** 中登录同一 team，打开 **Manage Certificates…**，用 “+” 添加 **Apple Development**。私钥留在这台 Mac 的钥匙串。不要为了腾名额吊销另一台电脑的证书，除非操作者明确同意。然后写入 gitignore 的 `Config/Developer.xcconfig`，安装 `xcodegen` 并 `xcodegen generate`，再运行 `./scripts/ship-encrypted-hogp.sh`。构建时描述文件可能会刷新，必须仍包含这只手表；不要打印 UDID、`ProvisionedDevices` 或证书序列号。Apple ID / 权限提示要操作者在这台 Mac 上确认。免费账号约 7 天需手动重签，这是可以接受的。
+- 也可以仍在已经有证书的开发机上签名，把 zip 拷到新 Mac 再安装。新 Mac 仍然必须在本地完成 HID 侧的绑定过程（如果需要的话）。这不是“把 mini 的密钥复制过来”。
 
 ## 快速路径
 
 这是可复用的安装与配对步骤。2026-11-10 它已在一台新 Mac 上完成配对和加密并创建了 HID 设备，但还没有得到 `WatchHID` / `Ultra2-R1` 身份，也没有指针移动，因此不能写成已经快速可靠的成功方案。
 
-1. 在能签名的 Mac 上运行 `./scripts/ship-encrypted-hogp.sh`，得到 `build/diagnostics/recovery-root/WatchHID-encrypted-hogp.zip`。默认配方不要改；这个脚本会带上 `WH_HOGP_ENCRYPTED`。该配方给 Report Map 和输入 Report 设置加密读，并给输入 Report 设置加密通知；不要写成这些读/通知特征还要求加密写。
+1. 若这台电脑还没有 Apple Development 证书，先按上面「什么时候需要本机签名」或 SETUP 第 4 节在本机创建，不必回到原先的签名机。准备好后再运行 `./scripts/ship-encrypted-hogp.sh`，得到 `build/diagnostics/recovery-root/WatchHID-encrypted-hogp.zip`。默认配方不要改；这个脚本会带上 `WH_HOGP_ENCRYPTED`。该配方给 Report Map 和输入 Report 设置加密读，并给输入 Report 设置加密通知；不要写成这些读/通知特征还要求加密写。
 2. 把 zip 拷到要当鼠标主机的那台 Mac。普通文件拷贝即可；两台电脑都开着时，也可以用远程桌面或 UU 的传文件。不要传蓝牙偏好设置。
 3. 开发安装通道和蓝牙 HID 不是一回事。手表可以已经通过蓝牙连着，但 `devicectl` 仍是 `unavailable` 或 `available (paired)` 且隧道断开。此时需要：手表拿近、点亮并解锁、保持屏幕亮着；配对的 iPhone 也拿近并解锁，尽量连同一 Wi-Fi。不必插 USB 线。等到 `devicectl list devices` 显示这只手表为 `connected`。一次同 Wi-Fi、未插线且 iPhone 已解锁时通道变为 connected 并成功装包，只说明那次可以无线安装，不代表以后都必须有 iPhone，也不代表无线隔离已验证。
 4. 在主机 Mac 上运行 `./scripts/install-signed-watch-app.sh`（或把 zip / `.app` 路径作为参数）。无参数时默认优先选用上述 zip，而不是可能陈旧的解压目录。脚本会按精确 UDID 匹配、校验签名、在超时之内安装并拉起 WatchHID；输出会去掉 UDID / 蓝牙地址 / ProvisionedDevices。如果通道不可用，它会打印上述清单并退出，不要为此重置蓝牙。
 5. 让操作者把 WatchHID 留在手表前台，保持屏幕亮着，确认能看见状态文字。加密包可以触发主机 `startAutoPairing`。若系统弹出 passkey / 蓝牙配对确认，必须在这台 Mac 的对话框里完成确认。配对和加密可以成功，系统也可以创建 `IOHIDUserDevice`。然后短滑触控板，运行 `./scripts/verify-hogp-mouse.sh`。NODE_OK 之后仍要确认指针真的移动了。
 6. 重装后，旧的 HID BLE 会话可能会断掉。如果暂时看不到新的 HID 初始化，先再打开一次 WatchHID，而不是重置蓝牙。应用不在前台时，主机常常只读到系统 Apple Watch 的 Device Information（Manufacturer 只有 “Apple Inc.”，没有项目 PnP），自动配对可能在约 60 毫秒内被对端以 reason=8 中止，因而没有可见弹窗。一旦读到 WatchHID 的 GATT 指纹，passkey 界面是可以出现的。
 
-## 源码门闩与身份（尚未改代码）
+## 源码门闩与身份
 
-- `等待 Mac 系统订阅` 不是订阅成功。源码里 `macInputReady` 和日常 `submitMouseReport` 要求 CCCD 订阅者集合精确等于写死的那一个 Mac 中央标识（来自原先那台 mini；不要写出这个标识）。底层通知 API 若被调用会发给所有已订阅中央，但日常路径在集合不匹配时不会调用它。所以新 Mac 即使已经订阅了 Report，状态也可能仍停在等待，触控也不会发出报告。
+- 2026-11-10 当时装在手表上的加密包里，`等待 Mac 系统订阅` 不是订阅成功：那一版的 `macInputReady` 和日常 `submitMouseReport` 要求 CCCD 订阅者集合精确等于写死的那一个 Mac 中央标识（来自原先那台 mini；不要写出这个标识）。底层通知 API 若被调用会发给所有已订阅中央，但那一版日常路径在集合不匹配时不会调用它。所以新 Mac 即使已经订阅了 Report，状态也可能仍停在等待，触控也不会发出报告。
 - 默认 PnP 使用 Apple 厂商号 `0x004C`。源码只把「可能促使 SameAccount 合并」写成推测。2026-11-10 系统创建的鼠标身份是 `Apple Inc.` / `Watch7,5` / `ZY的Apple Watch`，报告描述符 52 字节，与项目基线 `mouseReportMap` 的 64 字节不一致。这与上述推测相符，但还不是已证实的合并机制。
-- 建议的下一实现步骤（尚未交付）：输入门和鼠标通知改为接受当前实际订阅了 Report 的这台主机，然后在能签名的电脑上重新出包再验证。若门打开后身份仍不是 `WatchHID` / `Ultra2-R1`，再单独考虑非 Apple PnP 或如何发布项目自己的 Device Information。不要用重置蓝牙代替这次修改。
+- 接受当前实际订阅者作为输入主机的源码修改已在本分支，但尚未签名安装到手表。配对和加密在这台新 Mac 上已有实证；WatchHID 身份和指针移动仍待验证。不要重置刚刚完成的绑定。要在这台新 Mac 上把该修改签出来，按上面的步骤创建本机证书，再运行 `./scripts/ship-encrypted-hogp.sh`。若装上后身份仍不是 `WatchHID` / `Ultra2-R1`，再单独考虑非 Apple PnP 或如何发布项目自己的 Device Information。
 
 ## 常见误判
 
