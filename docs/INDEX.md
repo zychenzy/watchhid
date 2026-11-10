@@ -7,6 +7,7 @@ Human-readable experiment notes only. **Do not commit** raw `build/diagnostics/*
 | [SETUP.zh-CN.md](SETUP.zh-CN.md) | 新 Mac：官方 Xcode、何时需要本机签名；开发通道与蓝牙的区别；无现成 HOGP 绑定时用 ship-encrypted-hogp.sh 与 install-signed-watch-app.sh |
 | [watchhid-new-mac-hogp skill](../.cursor/skills/watchhid-new-mac-hogp/SKILL.md) | 把新 Mac / 无加密绑定这条路径写成可复用步骤，供后续接手直接执行 |
 | [QUICKSTART.zh-CN.md](QUICKSTART.zh-CN.md) | 回来后真机试用与听写边界 |
+| [RETURN-CHECKLIST.zh-CN.md](RETURN-CHECKLIST.zh-CN.md) | 出门后回来的最短验收步骤、证据边界和失败时不要做什么 |
 | [mac-touchpad-mvp.md](mac-touchpad-mvp.md) | Mac BLE touchpad MVP install + owner-acceptance boundary |
 | [r5-att242-causal-audit.md](r5-att242-causal-audit.md) | ATT242 causal audit; callback observation vs availability |
 | [r5-client-audit.md](r5-client-audit.md) | iPhone client audit notes |
