@@ -17,10 +17,10 @@ Only the known Mac as sole Report subscriber plus active scene enables mouse inp
 | Baseline drag after phone USB unplug | User accepted; USB disappearance,31 native reports and cursor recorded |
 | Large UI signed build + wireless installation | Passed |
 | Large UI native descriptor and subscription | Passed; exact baseline four-byte descriptor |
-| Large UI drag / tap left / hold0.55s right | Needs one safe user gesture sequence |
+| Large UI drag / tap left / hold0.55s right | Drag accepted by user and25 native reports+cursor; left/right remain separately unverified |
 | App inactive, then foreground | Static metadata removes initialization callback dependency; physical input resume needs user validation |
 | Settings open/close | Input blocked; button release and no-replay pure tests pass; real touch resume needs user validation |
-| Dictation capture -> preview -> Done -> drag | Needs user speech; no Mac text is sent automatically |
+| Dictation capture -> preview -> Done -> drag | User accepted system microphone dictation; String callback recorded; return-to-pad movement remains separately unverified |
 | App process restart / BLE reconnect | Repeat real input validation remains open; no unpair/reset permitted |
 | Phone wireless isolation | Not tested; requires explicit user action separate from unplugging USB |
 | English HID text into controlled blank field | Not accepted; keyboard remains off |
@@ -29,3 +29,6 @@ Only the known Mac as sole Report subscriber plus active scene enables mouse inp
 Known accepted baseline source6d62b8e and signed rollback archive are preserved locally. Advanced merge3d714db preserves large pad, tap-left, hold-right and bottom system text-entry button. No push, Bluetooth cache reset, unpair, system restart or Mac input helper.
 
 Automated checks: compile Shared mouse/keyboard/metadata/descriptors with scripts/MouseInputStateTests.swift as main.swift; run12 evidence-gate tests in scripts/test_assess_live_read.py. Tests validate both metadata report-map modes, immutable bytes, dynamic-only writable/report attributes, inactive right-button release, no stale gesture replay and subscription-loss disarm. They do not replace actual macOS cursor acceptance.
+
+## Voice primary action
+The bottom orange microphone action is explicitly labeled语音听写. It retains the existing public nil-suggestions/plain WatchKit text-input call, accepted by the user after selecting the microphone. The installed SDK exposes no microphone-only/default-method parameter; the language overload supplies suggestions for the current language and explicitly does not go straight to dictation. No private API, system-page auto-click, or input-language/system setting modification. A non-modal help sentence lives in Settings and in the button accessibility hint, not in a repeating alert and not at the expense of touchpad area. Whether this watchOS remembers the last dictation mode remains unverified.
