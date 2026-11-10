@@ -18,7 +18,7 @@ Only the known Mac as sole Report subscriber plus active scene enables mouse inp
 | Large UI signed build + wireless installation | Passed |
 | Large UI native descriptor and subscription | Passed; exact baseline four-byte descriptor |
 | Large UI drag / tap left / hold0.55s right | Drag accepted by user and25 native reports+cursor; left/right remain separately unverified |
-| App inactive, then foreground | Static metadata removes initialization callback dependency; physical input resume needs user validation |
+| App inactive, then foreground | Immutable metadata no longer needs callbacks, but other initialization still sometimes ATT242; physical input resume needs user validation |
 | Settings open/close | Input blocked; button release and no-replay pure tests pass; real touch resume needs user validation |
 | Dictation capture -> preview -> Done -> drag | User accepted system microphone dictation; String callback recorded; return-to-pad movement remains separately unverified |
 | App process restart / BLE reconnect | Repeat real input validation remains open; no unpair/reset permitted |
@@ -32,3 +32,6 @@ Automated checks: compile Shared mouse/keyboard/metadata/descriptors with script
 
 ## Voice primary action
 The bottom orange microphone action is explicitly labeled语音听写. It retains the existing public nil-suggestions/plain WatchKit text-input call, accepted by the user after selecting the microphone. The installed SDK exposes no microphone-only/default-method parameter; the language overload supplies suggestions for the current language and explicitly does not go straight to dictation. No private API, system-page auto-click, or input-language/system setting modification. A non-modal help sentence lives in Settings and in the button accessibility hint, not in a repeating alert and not at the expense of touchpad area. Whether this watchOS remembers the last dictation mode remains unverified.
+
+## Remaining initialization failure
+After the final wording-only reinstall, native BTLEServer again reported ATT242 and timed out without recreating the mouse. No HID recipe had changed. One unchanged remote restart did not recover it. Static immutable metadata is a useful accepted repair, not a complete solution for every foreground/launch timing. Exact remaining failing dynamic attribute is not isolated. At09:07 HKT Watch and iPhone were unavailable after the user left home, so no further hardware attempts were made. The last installed19e2b13 is installed but needs a fresh manual foreground-open/short-drag acceptance; the packaged successor changes only simulator-only checks and documentation on device.
