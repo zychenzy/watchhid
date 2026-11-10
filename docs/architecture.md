@@ -1,3 +1,5 @@
+**English** | [简体中文](architecture.zh-CN.md)
+
 # Architecture notes
 
 WatchHID is a watch-only Apple Watch application. It advertises a Bluetooth Low Energy HID-over-GATT (HOGP) mouse. When English typing is enabled, the keyboard is a **separate** HID service. The baseline mouse report stays a 4-byte relative report (buttons, X, Y, wheel) with no Report ID.

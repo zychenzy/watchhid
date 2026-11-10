@@ -1,3 +1,5 @@
+**English** | [简体中文](SIMULATOR-CHECKS.zh-CN.md)
+
 # Simulator checks
 
 These checks exercise the system text-input sheet in the watchOS Simulator. They are not speech recognition, microphone, physical touch, or BLE tests.

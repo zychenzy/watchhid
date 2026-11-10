@@ -1,6 +1,8 @@
+**English** | [简体中文](INDEX.zh-CN.md)
+
 # Docs
 
-Current English user and operator documents:
+Current user and operator documents:
 
 - [Setup](setup.md) — signing, build, and install
 - [Usage](usage.md) — trackpad, Crown, dictation, and output selection

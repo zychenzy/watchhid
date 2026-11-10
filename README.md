@@ -1,8 +1,10 @@
+**English** | [简体中文](README.zh-CN.md)
+
 # WatchHID
 
 Use an Apple Watch as a Bluetooth LE HID mouse, with optional English dictation typing, on a Mac. No extra hardware, and no helper app on the Mac for the pointer.
 
-The Watch UI follows the Watch system language (English, Simplified Chinese, Traditional Chinese). Repository documentation and tests are English only.
+The Watch UI follows the Watch system language (English, Simplified Chinese, Traditional Chinese). Tests in this repository are English only. Documentation is provided in English and Simplified Chinese.
 
 ## Features
 

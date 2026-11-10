@@ -1,3 +1,5 @@
+**English** | [简体中文](troubleshooting.zh-CN.md)
+
 # Troubleshooting
 
 Try the matching row first. Do not reset system Bluetooth or unpair the system Apple Watch to “fix” WatchHID.

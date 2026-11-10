@@ -1,3 +1,5 @@
+**English** | [简体中文](setup.zh-CN.md)
+
 # Setup
 
 This is the public install path for WatchHID on a Mac you control. It does not reset Bluetooth bonds, and it does not copy an encrypted HOGP bond from another Mac.
