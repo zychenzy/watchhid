@@ -61,8 +61,12 @@ xcrun devicectl list devices
 1. 保持当前 macOS / iCloud 登录不变。
 2. 打开 **Xcode > Settings > Accounts**，添加此前用于本项目的开发 Apple ID（免费个人 team 即可）。按系统提示完成登录和双重验证；不要在聊天里发送密码或验证码。Apple ID 或权限相关的系统提示，需要你在这台 Mac 上亲自确认。
 3. 选中该 Apple ID，再选中对应的 team，打开 **Manage Certificates…**（管理证书）。用 “+” 添加 **Apple Development**。不要去找文档里没有写到的菜单项。创建成功后，私钥必须留在这台 Mac 的钥匙串里，只属于这台电脑。
-4. 用 `./scripts/check-signing-prereqs.sh` 确认本机已具备可用身份。只在钥匙串里看到 Apple Development 证书还不够：`security find-identity -v -p codesigning` 必须列出该身份。只在开发者网站创建并导入 `.cer`、或证书没有配套私钥，都不能签名。遇到这种情况时，不要吊销或删除已有证书，也不要从其他电脑拷私钥；回到上一步，在 Xcode 里用 “+” 再添加 **Apple Development**，让这台 Mac 生成本地私钥。若出现钥匙串访问或 Apple ID 对话框，在系统或 Xcode 的官方窗口里确认。不要在聊天里发送密码、验证码或私钥。
-5. 不要为了“腾名额”去吊销另一台电脑上已有的证书，除非你明确同意。吊销会使那台电脑无法继续签名。若 Xcode 提示该 team 的证书数量已达上限，先停下来，不要自行吊销。
+4. 用 `./scripts/check-signing-prereqs.sh` 确认本机已具备可用身份。Xcode Manage Certificates 里证书状态为空白（已在钥匙串，不是「不在钥匙串」）仍不够：`security find-identity -v -p codesigning` 必须列出该身份。若 `-v` 为空，先不要默认是「没有私钥」，也不要立刻再点 “+”。先运行不带 `-v` 的 `security find-identity -p codesigning`：
+   - 若已能看到匹配身份、但未列入 Valid（例如带 `CSSMERR_TP_NOT_TRUSTED`），这通常是证书链问题，而不是缺私钥。Apple Development 由 WWDR G3 中间证书签发。登录或系统钥匙串里如果只有 2013–2023 那张已过期、同名但 OU 不同的旧 WWDR，或根本没有 G3，基本信任就会失败（`MissingIntermediate`）。从 [Apple PKI](https://www.apple.com/certificateauthority/AppleWWDRCAG3.cer) 下载 `AppleWWDRCAG3.cer`，执行 `security add-certificates -k ~/Library/Keychains/login.keychain-db AppleWWDRCAG3.cer`。不要改成「始终信任」，不要删除已有的开发证书。然后重新跑预检脚本。
+   - 若连不带 `-v` 也看不到身份，才说明证书没有配上本机私钥。此时不要吊销或删除已有证书，也不要从其他电脑拷私钥；回到上一步，在 Xcode 里用 “+” 再添加 **Apple Development**，让这台 Mac 生成本地私钥。
+   - 若再点 “+” 时 Xcode 提示已有有效的 Development 证书或未完成的申请（`You already have a current Development certificate or a pending certificate request`），先停下来。不要为了腾名额吊销另一台电脑（例如 Mac mini）上的证书。先按上面检查中间证书和信任。只有确认本机这张证书确实无法配成可用身份、且无法修复时，才考虑只吊销本机这张坏掉的证书，然后再创建一张完整的。
+   若出现钥匙串访问或 Apple ID 对话框，在系统或 Xcode 的官方窗口里确认。不要在聊天里发送密码、验证码或私钥。
+5. 不要为了“腾名额”去吊销另一台电脑上已有的证书，除非你明确同意。吊销会使那台电脑无法继续签名。若 Xcode 提示该 team 的证书数量已达上限，或出现上一步的 “already have a current Development certificate” 提示，先停下来，不要自行吊销其他电脑的证书。
 6. 若还没有 `Config/Developer.xcconfig`，把跟踪在仓库里的 `Config/Developer.xcconfig.example` 复制为 gitignore 的 `Config/Developer.xcconfig`，填入该账号在 Xcode 中显示的 `DEVELOPMENT_TEAM`。不要编造新的 team，也不要提交这个文件。
 7. 安装 `xcodegen`（`brew install xcodegen`）。`./scripts/ship-encrypted-hogp.sh` 会自己调用 `xcodegen generate`；缺少 xcodegen、xcconfig 或可用身份时，脚本会清楚失败。
 8. 再运行第 11 节的 `./scripts/ship-encrypted-hogp.sh`（默认不要加 `--install`，先确认本机签出的 zip）。构建时 Xcode / `xcodebuild` 可能会为此账号刷新开发描述文件；描述文件必须仍包含这只手表。不要把 UDID、`ProvisionedDevices` 或证书序列号打印到聊天或提交到 git。查看过期和是否包含已配置手表时，用 `python3 scripts/watchhid_scriptlib.py provision-info ./WatchHIDWatchApp.app`。第一次构建可能弹出钥匙串访问或签名确认，在官方对话框里完成。
@@ -175,7 +179,7 @@ python3 scripts/watchhid_scriptlib.py provision-info ./candidate/WatchHIDWatchAp
 | Mac 锁屏 | 锁屏时不要把本机探测失败写成应用损坏。先解锁再测指针。 | 不要为了测试绕过锁屏或改安全设置。 |
 | `devicectl` 看不到手表，或列表是 `unavailable` / 只有 `available (paired)` | 开发安装通道和蓝牙不是一回事。先确认完整 Xcode 已选中并完成 first launch、手表已开 Developer Mode、已信任这台电脑；把手表拿近、点亮并解锁；把配对的 iPhone 拿近并解锁，尽量连同一 Wi-Fi（不必插线）。等到状态是 `connected` 再安装。可用 `./scripts/install-signed-watch-app.sh`，通道不可用时它会打印这份清单。 | 不要重置蓝牙或取消系统配对来“打通”开发连接。也不要把蓝牙已连接当成已经可以装包。 |
 | 已签名包装不上或运行被拒 | 先看描述文件是否过期、这只手表是否在设备列表中。过期就在本机用开发 Apple ID 重新签名，见第 4 节。 | 不要从其他 Mac 复制私钥或登录 token。 |
-| 这台新 Mac 还不能签名 | 按第 4 节在本机创建 Apple Development 身份，并运行 `./scripts/check-signing-prereqs.sh`。钥匙串里只有证书、没有配套私钥时，仍不能签名；回到 Xcode 的 Manage Certificates… 用 “+” 让本机生成私钥。项目已经拷到这台电脑后，不必再依赖原先的签名机出包。 | 不要从其他电脑拷私钥。不要吊销或删除已有证书来“腾名额”，除非你明确同意。 |
+| 这台新 Mac 还不能签名 | 先运行 `./scripts/check-signing-prereqs.sh`。Xcode 显示证书已在钥匙串、但 `find-identity -v` 仍为空时，先跑不带 `-v` 的 `security find-identity`：身份存在但不信任时，按第 4 节安装 WWDR G3，不要再点 “+”。只有确认没有配上私钥时，才在 Manage Certificates… 用 “+” 让本机生成私钥。若 “+” 提示已有有效 Development 证书或未完成申请，先停下来。项目已经拷到这台电脑后，不必再依赖原先的签名机出包。 | 不要从其他电脑拷私钥。不要为了腾名额吊销另一台电脑（例如 Mac mini）的证书。不要在尚未检查中间证书时删除本机这张证书。 |
 | 重装后偶发连不上鼠标 | 静态设备信息修复过一类初始化问题，但不是所有前台/启动时序的完整保证。保留现场日志再查。 | 不要把模拟器通过当成真机已恢复。 |
 
 更详细的恢复说明与回归表见 [HOGP-RECOVERY.md](HOGP-RECOVERY.md)。
