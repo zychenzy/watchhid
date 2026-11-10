@@ -104,7 +104,8 @@ xcrun devicectl device install app --device "$WATCH_UDID"   ./candidate/WatchHID
 
 - 不需要 Xcode 正在运行；
 - 不需要 iPhone USB 连接到这台 Mac；
-- **不能**把「蓝牙设置里显示已连接」、Xcode / Device Hub 的开发隧道，或系统里一个普通 Mouse 名称，当成 WatchHID 已成功。成功的实证是系统 HID 出现项目约定的身份（例如 Manufacturer 为 `WatchHID`）并且指针真的移动。
+- 首次在一台新 Mac 上打开 WatchHID 时，系统可能弹出蓝牙配对确认。这是设置的一步，在系统对话框里确认即可。这不是取消手表的系统配对，也不需要重置蓝牙；
+- **不能**把「蓝牙设置里显示已连接」、已经点过配对确认、Xcode / Device Hub 的开发隧道，或系统里一个普通 Mouse 名称，当成 WatchHID 已成功。成功的实证是系统 HID 出现项目约定的身份（例如 Manufacturer 为 `WatchHID`）并且指针真的移动。
 
 回来验收的具体手势与听写步骤见 [QUICKSTART.zh-CN.md](QUICKSTART.zh-CN.md)。
 
@@ -118,7 +119,7 @@ xcrun devicectl device install app --device "$WATCH_UDID"   ./candidate/WatchHID
 
 | 现象 | 先怎么理解 | 不要做什么 |
 |---|---|---|
-| 指针不动，但蓝牙或开发器显示已连接 | 可能是初始化时 ATT242 等错误，Mac 没有创建可用的系统鼠标节点。先退出并在手表上手动重新打开应用，再短滑。 | 不要取消配对、清蓝牙缓存、重置系统蓝牙或关安全防护。 |
+| 指针不动，但蓝牙或开发器显示已连接 | 首次在新 Mac 上使用时，若系统弹出蓝牙配对确认，先确认。确认之后仍可能因链路未加密或 ATT242 等错误，导致系统没有创建可用的鼠标节点。先退出并在手表上手动重新打开应用，再短滑；只完成弹窗并不等于指针已经可用。 | 不要取消手表的系统配对、清蓝牙缓存、重置系统蓝牙或关安全防护。 |
 | Mac 锁屏 | 锁屏时不要把本机探测失败写成应用损坏。先解锁再测指针。 | 不要为了测试绕过锁屏或改安全设置。 |
 | `devicectl` 看不到手表 | 先确认完整 Xcode 已选中并完成 first launch、手表已开 Developer Mode、已信任这台电脑，且手表在附近并已唤醒。 | 同样不要重置蓝牙或取消系统配对来“打通”开发连接。 |
 | 已签名包装不上或运行被拒 | 先看描述文件是否过期、这只手表是否在设备列表中。过期就在本机用开发 Apple ID 重新签名。 | 不要从其他 Mac 复制私钥或登录 token。 |
