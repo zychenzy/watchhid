@@ -6,7 +6,7 @@ The Watch app UI follows the Watch system language (English, Simplified Chinese,
 
 ## What this is
 
-WatchHID is a **watch-only** app. It advertises a standard Bluetooth HOGP mouse. A Mac that bonds and subscribes treats it as a system mouse. English typing, when enabled, uses a **separate** keyboard HID service and does not change the baseline mouse Report Map.
+WatchHID is a **watch-only** app: it does not require a WatchHID companion app on iPhone. That is not the same as every system privacy control being editable on the Watch alone. It advertises a standard Bluetooth HOGP mouse. A Mac that bonds and subscribes treats it as a system mouse. English typing, when enabled, uses a **separate** keyboard HID service and does not change the baseline mouse Report Map.
 
 watchOS marks `CBPeripheralManager` APIs `API_UNAVAILABLE(watchos)`. This project creates the peripheral at runtime. That has worked on the setups that were actually tested; it is **not** a supported Apple API, not an App Store submission, and not a stability guarantee for future watchOS releases.
 
@@ -44,7 +44,7 @@ cp Config/local_devices.env.example Config/local_devices.env     # once; fill th
 
 The installer has a single readiness gate (a `connected` list entry is not enough). Do **not** run `./scripts/install-signed-watch-app.sh --check-ready` immediately before an install; that flag is a standalone probe for diagnosis only.
 
-Then open WatchHID, confirm a Bluetooth pairing prompt if macOS shows one, short-drag on the pad, and run:
+Then open WatchHID. If Watch Bluetooth permission controls are unavailable and say that some privacy settings are shared with iPhone, enable WatchHID in the paired iPhone’s **Settings > Privacy & Security > Bluetooth** when it is listed, then return to the Watch app. See [docs/setup.md](docs/setup.md). Confirm a Bluetooth pairing prompt if macOS shows one, short-drag on the pad, and run:
 
 ```bash
 ./scripts/verify-hogp-mouse.sh

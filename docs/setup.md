@@ -70,7 +70,19 @@ If install fails with “Failed to allocate RSD device”, CoreDevice 4000, or R
 
 ## 6. First use
 
-Open WatchHID on the Watch. If macOS shows a Bluetooth pairing prompt, confirm it in the system dialog. Short-drag on the pad, then:
+Open WatchHID on the Watch.
+
+Watch-only means WatchHID does not need a companion iPhone app. A paired iPhone is still required by watchOS, and some system privacy settings may still be managed on that iPhone. Apple documents that some Apple Watch privacy settings are shared with iPhone and are changed in the iPhone **Settings** app under **Privacy & Security** (examples there include Location Services, Analytics, Contacts, and Health): [View app settings and storage on Apple Watch](https://support.apple.com/guide/watch/view-app-settings-and-storage-apd31a7d203c/watchos). Apple’s Bluetooth privacy article, which includes Apple Watch, says you can allow or revoke an app’s Bluetooth access in **Settings > Privacy & Security > Bluetooth**: [If an app would like to use Bluetooth on your device](https://support.apple.com/en-us/102267).
+
+If the Watch does not become ready to advertise—for example it stays waiting for a host, or Watch **Settings > Privacy & Security > Bluetooth** controls are unavailable and say that some privacy settings are shared with iPhone—use the paired iPhone’s **Settings** app (this is not a claim that the iPhone **Watch** app can always change the same control):
+
+1. On the paired iPhone, open **Settings > Privacy & Security > Bluetooth**.
+2. If WatchHID is listed, enable it.
+3. Return to WatchHID on the Watch. Do not reset or unpair system Bluetooth, and do not reinstall the app to change this permission.
+
+This iPhone Settings path has been confirmed to restore WatchHID when the Watch Bluetooth controls were unavailable and showed that shared-settings notice. That is a confirmed case, not a requirement for every watchOS setup. If WatchHID is not in the iPhone Bluetooth privacy list, inspect the current Watch and iPhone privacy state rather than resetting Bluetooth or reinstalling at random.
+
+If macOS shows a Bluetooth pairing prompt, confirm it in the system dialog. Short-drag on the pad, then:
 
 ```bash
 ./scripts/verify-hogp-mouse.sh
