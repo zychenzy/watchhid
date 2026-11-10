@@ -16,11 +16,10 @@ final class PeripheralProbe: NSObject, ObservableObject {
     @Published private(set) var mouseEnabled = false
     @Published private(set) var mouseTouching = false
     @Published private(set) var inputStatus = L10n.string("status.waiting_subscription")
-    @Published private(set) var keyboardFeatureEnabled: Bool = UserDefaults.standard.bool(forKey: "wh.keyboardFeature")
+    @Published private(set) var keyboardFeatureEnabled: Bool = PeripheralProbe.storedKeyboardFeatureEnabled()
     /// Nonisolated mirror for ATT read callbacks (must stay in sync with keyboardFeatureEnabled).
-    private nonisolated(unsafe) var keyboardFeatureFlag: Bool = UserDefaults.standard.bool(forKey: "wh.keyboardFeature")
+    private nonisolated(unsafe) var keyboardFeatureFlag: Bool = PeripheralProbe.storedKeyboardFeatureEnabled()
     @Published private(set) var inputPausedByUser = false
-    @Published private(set) var dictationPreview: String?
     @Published private(set) var lastTypeStatus = ""
     @Published private(set) var keyboardBusy = false
     private var lastMouseNotifyLog = -Double.infinity
@@ -56,7 +55,9 @@ final class PeripheralProbe: NSObject, ObservableObject {
         #else
         experimentOverride = "standard128"
         #endif
-        // Mouse regression recovery: keep Report ID / composite OFF unless user explicitly enabled keyboard.
+        // Keyboard is on by default so dictation can type into the Mac.
+        // This uses the composite Report Map; the Mac may re-enumerate. The
+        // Settings toggle still restores the baseline mouse map.
         mouse.usesReportID = keyboardFeatureEnabled
         keyboard.usesReportID = true
         keyboardFeatureFlag = keyboardFeatureEnabled
@@ -88,7 +89,15 @@ final class PeripheralProbe: NSObject, ObservableObject {
         refreshInputGate()
     }
 
-    /// Keyboard composite changes Report Map; republish only when toggled. Default off preserves mouse baseline.
+    /// Missing key means on: dictation should type into the Mac. An explicit off is kept.
+    nonisolated private static func storedKeyboardFeatureEnabled() -> Bool {
+        if UserDefaults.standard.object(forKey: "wh.keyboardFeature") == nil {
+            return true
+        }
+        return UserDefaults.standard.bool(forKey: "wh.keyboardFeature")
+    }
+
+    /// Keyboard composite changes Report Map; republish only when toggled.
     func setKeyboardFeatureEnabled(_ enabled: Bool) {
         guard enabled != keyboardFeatureEnabled else { return }
         keyboardFeatureEnabled = enabled
@@ -104,7 +113,7 @@ final class PeripheralProbe: NSObject, ObservableObject {
 
     private func refreshInputGate() {
         // Keep sceneActive vs macInputReady split (a3c9eaf). Gate arming with pause/pending only.
-        if let release = mouse.availability(active: sceneActive && !inputPausedByUser && !inputUIBlocked, macReady: macInputReady) {
+        if let release = mouse.availability(active: sceneActive && !inputPausedByUser && !inputUIBlocked && !keyboard.busy, macReady: macInputReady) {
             finishMouseRelease(release)
         }
         let kbActive = sceneActive && !inputPausedByUser && !inputUIBlocked && keyboardFeatureEnabled
@@ -262,18 +271,24 @@ final class PeripheralProbe: NSObject, ObservableObject {
         return WHUpdateReport(peripheral, data, report)
     }
 
-    /// Review-confirmed ASCII only. Logs length/skipped — never plaintext.
+    /// Type typable US-ASCII into the Mac. Logs length/skipped — never plaintext.
     func typeReviewedASCII(_ text: String) {
         guard keyboardFeatureEnabled else {
             lastTypeStatus = L10n.string("type.keyboard_off")
+            return
+        }
+        let asciiCount = text.unicodeScalars.filter { $0.isASCII }.count
+        let nonASCII = text.unicodeScalars.count - asciiCount
+        let typable = text.unicodeScalars.filter { $0.isASCII && KeyboardInputState.mapASCII(UInt8($0.value)) != nil }.count
+        guard typable > 0 else {
+            lastTypeStatus = L10n.string("type.no_ascii")
+            log.info("Type skipped; no typable ASCII asciiCount=\(asciiCount) nonASCII=\(nonASCII)")
             return
         }
         guard keyboardReady, keyboard.enabled else {
             lastTypeStatus = L10n.string("type.keyboard_not_ready")
             return
         }
-        let asciiCount = text.unicodeScalars.filter { $0.isASCII }.count
-        let nonASCII = text.unicodeScalars.count - asciiCount
         guard keyboard.enqueueASCII(text) else {
             lastTypeStatus = keyboard.busy ? L10n.string("type.keyboard_busy") : L10n.string("type.cannot_queue")
             log.warn("Type refused busy=\(keyboard.busy) asciiChars=\(asciiCount) nonASCII=\(nonASCII)")
@@ -284,7 +299,36 @@ final class PeripheralProbe: NSObject, ObservableObject {
             : L10n.string("type.sending", asciiCount)
         log.info("Type queued ascii=\(asciiCount) skippedNonASCII=\(nonASCII) skippedUnsupported=\(keyboard.skippedUnsupported)")
         startKeyboardTimer()
-        dictationPreview = nil
+        keyboardBusy = true
+    }
+
+    /// After system dictation returns, type into the Mac without showing the text on the Watch.
+    func acceptDictation(_ text: String) {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        let ascii = trimmed.unicodeScalars.filter { $0.isASCII }.count
+        log.info("Dictation captured chars=\(trimmed.count) ascii=\(ascii) (auto-type; text not shown)")
+        attemptType(trimmed, attemptsLeft: 8)
+    }
+
+    private func attemptType(_ text: String, attemptsLeft: Int) {
+        refreshInputGate()
+        if keyboardFeatureEnabled && keyboardReady && !keyboard.enabled {
+            _ = keyboard.arm()
+            refreshInputGate()
+        }
+        if keyboardReady && keyboard.enabled {
+            typeReviewedASCII(text)
+            return
+        }
+        guard attemptsLeft > 0, keyboardFeatureEnabled else {
+            lastTypeStatus = L10n.string("type.keyboard_not_ready")
+            return
+        }
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(250))
+            self.attemptType(text, attemptsLeft: attemptsLeft - 1)
+        }
     }
 
     func cancelTyping() {
@@ -334,15 +378,6 @@ final class PeripheralProbe: NSObject, ObservableObject {
         }
     }
 
-    func clearDictationPreview() { dictationPreview = nil }
-
-    func presentDictationReview(text: String) {
-        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return }
-        dictationPreview = trimmed
-        let ascii = trimmed.unicodeScalars.filter { $0.isASCII }.count
-        log.info("Dictation captured chars=\(trimmed.count) ascii=\(ascii) (preview held; not typed)")
-    }
 
     private var customServiceUUID: String {
         experiment.hasPrefix("custom-fresh") ? "A7B10001-7E42-4C63-9D17-B5A0F055C903" : experiment == "custom-hidshape-v2" ? "A7B10001-7E42-4C63-9D17-B5A0F055C902" : "A7B10001-7E42-4C63-9D17-B5A0F055C901"

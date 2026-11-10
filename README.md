@@ -9,8 +9,8 @@ This repository is written in English. The Watch app UI follows the Watch system
 | Path | Status |
 |---|---|
 | Mac as a direct BLE HOGP mouse | Confirmed on two Macs: same-node identity `WatchHID` / `Ultra2-R1`, plus pointer movement the operator saw. A new Mac needs its own encrypted HOGP bond and a build that accepts any Report subscriber. |
-| Watch dictation | System dictation can capture text for review on the Watch. It does not type into the Mac by default. Live English capture on the current build is the next check. |
-| English HID keyboard into the Mac | Implemented but **off** by default. Do not enable it unless you are ready for the Mac to re-enumerate the HID device. |
+| Watch dictation | System dictation captures text and types typable English into the focused Mac field. The Watch does not show the captured text. |
+| English HID keyboard into the Mac | On by default. Only US-ASCII is mapped. The Mac may re-enumerate the HID device. Chinese is not typed. |
 | iPhone system HID / AssistiveTouch / UU remote | Not achieved. |
 
 watchOS marks `CBPeripheralManager` APIs `API_UNAVAILABLE(watchos)`. This project creates the peripheral at runtime and it works on the setups below. That is not a supported stability guarantee for future watchOS.
