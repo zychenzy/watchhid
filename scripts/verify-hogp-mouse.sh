@@ -16,16 +16,20 @@ TMP="$(mktemp "${TMPDIR:-/tmp}/watchhid-ioreg.XXXXXX")"
 cleanup() { rm -f "$TMP"; }
 trap cleanup EXIT
 
-if ! python3 "$LIB" run-bounded --timeout "$IOREG_TIMEOUT" -- \
-    ioreg -r -c IOHIDDevice -l -a >"$TMP" 2>/tmp/watchhid-ioreg-err.$$; then
-  if [[ -s /tmp/watchhid-ioreg-err.$$ ]]; then
-    python3 "$LIB" redact /tmp/watchhid-ioreg-err.$$ >&2 || true
+# Capture raw ioreg XML to $TMP and parse that file later. Do not pipe
+# it through a redactor first: placeholders such as "<redacted-id>" are
+# themselves XML and will break plistlib (mismatched tag).
+ERR="$(mktemp "${TMPDIR:-/tmp}/watchhid-ioreg-err.XXXXXX")"
+if ! python3 "$LIB" run-bounded --timeout "$IOREG_TIMEOUT" --stdout "$TMP" -- \
+    ioreg -r -c IOHIDDevice -l -a 2>"$ERR"; then
+  if [[ -s "$ERR" ]]; then
+    python3 "$LIB" redact "$ERR" >&2 || true
   fi
-  rm -f /tmp/watchhid-ioreg-err.$$
+  rm -f "$ERR"
   echo "NO: could not read IOHIDDevice registry (timed out or unavailable)."
   echo "This is not a pointer-movement result. Do not reset Bluetooth."
   exit 1
 fi
-rm -f /tmp/watchhid-ioreg-err.$$
+rm -f "$ERR"
 
 exec python3 "$LIB" verify-hid --ioreg "$TMP"
