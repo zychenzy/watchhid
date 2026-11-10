@@ -24,6 +24,8 @@ final class PeripheralProbe: NSObject, ObservableObject {
     private nonisolated(unsafe) var keyboardFeatureFlag: Bool = PeripheralProbe.storedKeyboardFeatureEnabled()
     @Published private(set) var inputPausedByUser = false
     @Published private(set) var lastTypeStatus = ""
+    private var pendingTypeText: String?
+    private var typeRetryTask: Task<Void, Never>?
     @Published private(set) var keyboardBusy = false
     private var lastMouseNotifyLog = -Double.infinity
     private var mouse = MouseInputState()
@@ -68,17 +70,25 @@ final class PeripheralProbe: NSObject, ObservableObject {
     }
 
     func setInputSceneActive(_ active: Bool) {
+        // The system dictation sheet often reports inactive just as Done
+        // returns. Cancelling here dropped the keyboard send.
+        if !active && hasPendingKeyboardSend {
+            log.info("Ignoring scene inactive during pending keyboard send")
+            return
+        }
         sceneActive = active
         if !active {
             if let release = keyboard.cancel() { _ = submitKeyboardReport(release) }
             stopKeyboardTimer()
         }
         refreshInputGate()
+        if active { resumePendingType() }
     }
 
     func setInputUIBlocked(_ blocked: Bool) {
         inputUIBlocked = blocked
         refreshInputGate()
+        if !blocked { resumePendingType() }
     }
 
     func setInputPaused(_ paused: Bool) {
@@ -310,30 +320,76 @@ final class PeripheralProbe: NSObject, ObservableObject {
         guard !trimmed.isEmpty else { return }
         let ascii = trimmed.unicodeScalars.filter { $0.isASCII }.count
         log.info("Dictation captured chars=\(trimmed.count) ascii=\(ascii) (auto-type; text not shown)")
-        attemptType(trimmed, attemptsLeft: 8)
+        // The system sheet may still be tearing down. Keep the keyboard path
+        // armed and retry until the host resubscribes or we time out.
+        inputUIBlocked = false
+        sceneActive = true
+        pendingTypeText = trimmed
+        startTypeRetryLoop(attempts: 40)
     }
 
-    private func attemptType(_ text: String, attemptsLeft: Int) {
+    private var hasPendingKeyboardSend: Bool { pendingTypeText != nil || keyboard.busy }
+
+    private func resumePendingType() {
+        guard pendingTypeText != nil, typeRetryTask == nil else { return }
+        startTypeRetryLoop(attempts: 40)
+    }
+
+    private func startTypeRetryLoop(attempts: Int) {
+        typeRetryTask?.cancel()
+        typeRetryTask = Task { @MainActor [weak self] in
+            guard let self else { return }
+            for remaining in stride(from: attempts, through: 1, by: -1) {
+                if Task.isCancelled { return }
+                if self.trySendPendingType() {
+                    self.typeRetryTask = nil
+                    return
+                }
+                if remaining == 40 || remaining % 8 == 0 {
+                    self.log.info("Type wait remaining=\(remaining) ready=\(self.keyboardReady) scene=\(self.sceneActive) blocked=\(self.inputUIBlocked) kbSubs=\(self.keyboardSubscribedCentrals.count) mouseSubs=\(self.subscribedCentrals.count)")
+                }
+                try? await Task.sleep(for: .milliseconds(250))
+            }
+            if self.pendingTypeText != nil {
+                self.lastTypeStatus = L10n.string("type.keyboard_not_ready")
+                self.log.warn("Type gave up ready=\(self.keyboardReady) feature=\(self.keyboardFeatureEnabled) scene=\(self.sceneActive) blocked=\(self.inputUIBlocked) kbSubs=\(self.keyboardSubscribedCentrals.count) mouseSubs=\(self.subscribedCentrals.count)")
+                self.pendingTypeText = nil
+            }
+            self.typeRetryTask = nil
+        }
+    }
+
+    /// Returns true when the pending text is queued, skipped, or abandoned as a terminal state.
+    private func trySendPendingType() -> Bool {
+        guard let text = pendingTypeText else { return true }
+        guard keyboardFeatureEnabled else {
+            lastTypeStatus = L10n.string("type.keyboard_off")
+            pendingTypeText = nil
+            return true
+        }
         refreshInputGate()
-        if keyboardFeatureEnabled && keyboardReady && !keyboard.enabled {
+        if keyboardReady && !keyboard.enabled {
             _ = keyboard.arm()
             refreshInputGate()
         }
-        if keyboardReady && keyboard.enabled {
-            typeReviewedASCII(text)
-            return
+        guard keyboardReady && keyboard.enabled else { return false }
+        typeReviewedASCII(text)
+        if keyboard.busy {
+            pendingTypeText = nil
+            return true
         }
-        guard attemptsLeft > 0, keyboardFeatureEnabled else {
-            lastTypeStatus = L10n.string("type.keyboard_not_ready")
-            return
+        let typable = text.unicodeScalars.contains { $0.isASCII && KeyboardInputState.mapASCII(UInt8($0.value)) != nil }
+        if !typable {
+            pendingTypeText = nil
+            return true
         }
-        Task { @MainActor in
-            try? await Task.sleep(for: .milliseconds(250))
-            self.attemptType(text, attemptsLeft: attemptsLeft - 1)
-        }
+        return false
     }
 
     func cancelTyping() {
+        typeRetryTask?.cancel()
+        typeRetryTask = nil
+        pendingTypeText = nil
         if let release = keyboard.cancel() { _ = submitKeyboardReport(release) }
         stopKeyboardTimer()
         lastTypeStatus = L10n.string("type.cancelled")
@@ -499,6 +555,9 @@ final class PeripheralProbe: NSObject, ObservableObject {
         keyboardHIDServiceObject = nil
         keyboardReportObject = nil
         keyboardSubscribedCentrals.removeAll()
+        typeRetryTask?.cancel()
+        typeRetryTask = nil
+        pendingTypeText = nil
         statusSummary = "Stopped"
         refreshInputGate()
         log.step("Probe stopped")
@@ -970,6 +1029,7 @@ extension PeripheralProbe: CBPeripheralManagerDelegate {
                     self.log.info("Input gate updated; no new input, except completing a pending explicit click release")
                 }
                 self.refreshInputGate()
+                self.resumePendingType()
             }
         }
     }
@@ -1001,7 +1061,14 @@ extension PeripheralProbe: CBPeripheralManagerDelegate {
     }
 
     nonisolated func peripheralManagerIsReady(toUpdateSubscribers peripheral: CBPeripheralManager) {
-        Task { @MainActor in self.retryPendingRelease() }
+        Task { @MainActor in
+            self.retryPendingRelease()
+            if self.keyboard.busy {
+                self.drainKeyboard()
+            } else {
+                self.resumePendingType()
+            }
+        }
     }
 
     nonisolated func peripheralManager(_ peripheral: CBPeripheralManager, didAdd service: CBService, error: Error?) {

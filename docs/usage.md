@@ -26,7 +26,7 @@ If the pointer does not move, exit WatchHID and open it again before doing anyth
 
 ## Dictation
 
-The bottom button is labeled Dictation (`语音听写` in Chinese). It presents the system text-input interface (`presentTextInputController`). After you accept the result, typable English is typed into the focused Mac field. The Watch does not show the captured text. While the system interface is up, the button reads Dictating (`听写中`). While text is being sent, it becomes Cancel (`取消`).
+The bottom button is labeled Dictation (`语音听写` in Chinese). It presents the system text-input interface (`presentTextInputController`). After you accept the result, typable English is typed into the focused Mac field, including after the system sheet briefly backgrounds the Watch app. The Watch does not show the captured text. While the system interface is up, the button reads Dictating (`听写中`). While text is being sent, it becomes Cancel (`取消`).
 
 1. Use the pad to click into a Mac text field so the insertion point is ready.
 2. Tap Dictation.
