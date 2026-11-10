@@ -19,19 +19,15 @@ final class PeripheralProbe: NSObject, ObservableObject {
     @Published private(set) var keyboardFeatureEnabled: Bool = UserDefaults.standard.bool(forKey: "wh.keyboardFeature")
     /// Nonisolated mirror for ATT read callbacks (must stay in sync with keyboardFeatureEnabled).
     private nonisolated(unsafe) var keyboardFeatureFlag: Bool = UserDefaults.standard.bool(forKey: "wh.keyboardFeature")
-    private nonisolated(unsafe) var macReadReportMapFlag: Bool = false
     @Published private(set) var inputPausedByUser = false
     @Published private(set) var dictationPreview: String?
     @Published private(set) var lastTypeStatus = ""
     @Published private(set) var keyboardBusy = false
     private var lastMouseNotifyLog = -Double.infinity
-    /// Mac (F7A…) read Report Map (2A4B) since current advertising generation.
-    private var macReadReportMapThisGeneration = false
-    private var hidRepublishScheduled = false
-    private var hidRepublishCount = 0
     private var mouse = MouseInputState()
     private var keyboard = KeyboardInputState()
     private var sceneActive = false
+    private var inputUIBlocked = false
     private var inputTimer: Timer?
     private var clickTask: Task<Void, Never>?
     private var keyboardTimer: Timer?
@@ -50,7 +46,7 @@ final class PeripheralProbe: NSObject, ObservableObject {
 
     func prepareMacTouchpad() {
         guard !isRunning else { return }
-        experimentOverride = "standard128-dynamic"
+        experimentOverride = "standard128"
         // Mouse regression recovery: keep Report ID / composite OFF unless user explicitly enabled keyboard.
         mouse.usesReportID = keyboardFeatureEnabled
         keyboard.usesReportID = true
@@ -65,6 +61,11 @@ final class PeripheralProbe: NSObject, ObservableObject {
             if let release = keyboard.cancel() { _ = submitKeyboardReport(release) }
             stopKeyboardTimer()
         }
+        refreshInputGate()
+    }
+
+    func setInputUIBlocked(_ blocked: Bool) {
+        inputUIBlocked = blocked
         refreshInputGate()
     }
 
@@ -94,17 +95,17 @@ final class PeripheralProbe: NSObject, ObservableObject {
 
     private func refreshInputGate() {
         // Keep sceneActive vs macInputReady split (a3c9eaf). Gate arming with pause/pending only.
-        if let release = mouse.availability(active: sceneActive && !inputPausedByUser, macReady: macInputReady) {
+        if let release = mouse.availability(active: sceneActive && !inputPausedByUser && !inputUIBlocked, macReady: macInputReady) {
             finishMouseRelease(release)
         }
-        let kbActive = sceneActive && !inputPausedByUser && keyboardFeatureEnabled
+        let kbActive = sceneActive && !inputPausedByUser && !inputUIBlocked && keyboardFeatureEnabled
         if let release = keyboard.availability(active: kbActive, macReady: keyboardReady) {
             _ = submitKeyboardReport(release)
         }
-        if sceneActive && !inputPausedByUser && macInputReady && !mouse.enabled && !pendingButtonRelease {
+        if sceneActive && !inputPausedByUser && !inputUIBlocked && macInputReady && !mouse.enabled && !pendingButtonRelease {
             _ = mouse.arm()
         }
-        if sceneActive && !inputPausedByUser && keyboardFeatureEnabled && keyboardReady && !keyboard.enabled {
+        if sceneActive && !inputPausedByUser && !inputUIBlocked && keyboardFeatureEnabled && keyboardReady && !keyboard.enabled {
             _ = keyboard.arm()
         }
         if !mouse.enabled {
@@ -121,6 +122,8 @@ final class PeripheralProbe: NSObject, ObservableObject {
             inputStatus = "松键待发送 · 暂停输入"
         } else if !sceneActive {
             inputStatus = "已暂停 · 返回后轻触继续"
+        } else if inputUIBlocked {
+            inputStatus = "面板暂停 · 关闭弹窗后恢复"
         } else if inputPausedByUser {
             inputStatus = "已手动暂停"
         } else if !macInputReady {
@@ -140,7 +143,7 @@ final class PeripheralProbe: NSObject, ObservableObject {
     }
 
     func touchpadChanged(x: Double, y: Double) {
-        guard mouse.enabled && macInputReady && sceneActive && !inputPausedByUser else { return }
+        guard mouse.enabled && macInputReady && sceneActive && !inputPausedByUser && !inputUIBlocked else { return }
         let now = ProcessInfo.processInfo.systemUptime
         if !mouse.touching {
             mouse.beginTouch(x: x, y: y, at: now)
@@ -419,9 +422,6 @@ final class PeripheralProbe: NSObject, ObservableObject {
         activeReport = nil
         activeKeyboardReport = nil
         keyboardSubscribedCentrals.removeAll()
-        macReadReportMapThisGeneration = false
-        macReadReportMapFlag = false
-        hidRepublishScheduled = false
         statusSummary = "Starting…"
         addedServiceCount = 0
         expectedServiceCount = 0
@@ -473,25 +473,6 @@ final class PeripheralProbe: NSObject, ObservableObject {
     }
 
 
-
-    private func scheduleHIDRepublishForHostRebind(reason: String) {
-        guard !hidRepublishScheduled, hidRepublishCount < 1 else {
-            log.info("HID republish skipped scheduled=\(hidRepublishScheduled) count=\(hidRepublishCount) reason=\(reason)")
-            return
-        }
-        hidRepublishScheduled = true
-        hidRepublishCount += 1
-        log.warn("Scheduling HID republish for Mac rebind: \(reason)")
-        Task { @MainActor [weak self] in
-            try? await Task.sleep(for: .milliseconds(400))
-            guard let self else { return }
-            let was = self.isRunning
-            if was { self.stop() }
-            try? await Task.sleep(for: .milliseconds(300))
-            self.prepareMacTouchpad()
-            self.log.info("HID republish completed (model Ultra2-R2); waiting for Mac Report Map read + CCCD")
-        }
-    }
 
     private func isKeyboardReportCharacteristic(_ characteristic: CBCharacteristic) -> Bool {
         guard keyboardFeatureEnabled else { return false }
@@ -663,11 +644,10 @@ final class PeripheralProbe: NSObject, ObservableObject {
             nil,
             secureHID ? (0x04 | 0x08) : (permReadable | permWriteable) // enc: read+writeEncryptionRequired
         )
-        let mapBytes = Data(keyboardFeatureEnabled ? HIDDescriptors.mouseKeyboardReportMap : HIDDescriptors.mouseReportMap)
         let reportMap = WHCreateMutableCharacteristic(
             hogpUUID(short: HIDDescriptors.UUID16.reportMap, full: HIDDescriptors.UUID128.reportMap),
             propRead,
-            dynamicValues ? nil : mapBytes,
+            dynamicValues ? nil : HIDMetadata.value(for: "2A4B", keyboardEnabled: keyboardFeatureEnabled),
             secureHID ? 0x04 : permReadable
         )
         let report = WHCreateMutableCharacteristic(
@@ -705,7 +685,7 @@ final class PeripheralProbe: NSObject, ObservableObject {
         let hidInfo = WHCreateMutableCharacteristic(
             hogpUUID(short: HIDDescriptors.UUID16.hidInformation, full: HIDDescriptors.UUID128.hidInformation),
             propRead,
-            dynamicValues ? nil : Data(HIDDescriptors.hidInformation),
+            dynamicValues ? nil : HIDMetadata.value(for: "2A4A"),
             secureHID ? 0x04 : permReadable
         )
         // HOGP: Control Point is Write Without Response (keep spec; do not copy darwin .read-only anomaly).
@@ -756,19 +736,19 @@ final class PeripheralProbe: NSObject, ObservableObject {
         let manufacturer = WHCreateMutableCharacteristic(
             hogpUUID(short: HIDDescriptors.UUID16.manufacturerName, full: HIDDescriptors.UUID128.manufacturerName),
             propRead,
-            dynamicValues ? nil : Data("WatchHID".utf8),
+            dynamicValues ? nil : HIDMetadata.value(for: "2A29"),
             permReadable
         )
         let model = WHCreateMutableCharacteristic(
             hogpUUID(short: HIDDescriptors.UUID16.modelNumber, full: HIDDescriptors.UUID128.modelNumber),
             propRead,
-            dynamicValues ? nil : Data("Ultra2-R2".utf8),
+            dynamicValues ? nil : HIDMetadata.value(for: "2A24"),
             permReadable
         )
         let pnp = WHCreateMutableCharacteristic(
             hogpUUID(short: HIDDescriptors.UUID16.pnpID, full: HIDDescriptors.UUID128.pnpID),
             propRead,
-            dynamicValues ? nil : pnpIDBytes,
+            dynamicValues ? nil : HIDMetadata.value(for: "2A50", pnpID: pnpIDBytes),
             permReadable
         )
         WHSetCharacteristics(service, [manufacturer, model, pnp].compactMap { $0 })
@@ -811,16 +791,12 @@ extension PeripheralProbe: CBPeripheralManagerDelegate {
             value = Data([1])
         } else if uuid == CBUUID(string: HIDDescriptors.UUID16.reportMap) {
             value = Data(keyboardFeatureFlag ? HIDDescriptors.mouseKeyboardReportMap : HIDDescriptors.mouseReportMap)
-            if request.central.identifier == UUID(uuidString: "F7A703F6-C354-8E7E-87CB-DEC064EA3CD9") {
-                macReadReportMapFlag = true
-                Task { @MainActor in self.macReadReportMapThisGeneration = true }
-            }
         } else if uuid == CBUUID(string: HIDDescriptors.UUID16.hidInformation) {
             value = Data(HIDDescriptors.hidInformation)
         } else if uuid == CBUUID(string: HIDDescriptors.UUID16.manufacturerName) {
             value = Data("WatchHID".utf8)
         } else if uuid == CBUUID(string: HIDDescriptors.UUID16.modelNumber) {
-            value = Data("Ultra2-R2".utf8) // bump vs R1 to nudge Mac HOGP re-enumerate without unpair
+            value = Data("Ultra2-R1".utf8)
         } else if uuid == CBUUID(string: HIDDescriptors.UUID16.pnpID) {
             let caseName = ProcessInfo.processInfo.arguments.first(where: { $0.hasPrefix("--r1-case=") })?.components(separatedBy: "=").last
             value = (caseName == "standard128-dynamic-pnpgen")
@@ -902,19 +878,6 @@ extension PeripheralProbe: CBPeripheralManagerDelegate {
                     self.reportSubscriberCount = self.subscribedCentrals.count
                     self.activeReport = characteristic
                     self.retryPendingRelease()
-                    // Baseline path: one neutral 4-byte mouse report after sole-Mac Report CCCD.
-                    // Helps macOS HOGP complete IOHID bind without requiring user motion.
-                    if !self.keyboardFeatureEnabled {
-                        let neutral = Data([0, 0, 0, 0])
-                        let ok = WHUpdateReport(self.dynamicPeripheral!, neutral, characteristic)
-                        self.log.info("Post-subscribe neutral mouse report accepted=\(ok) (baseline map, no Report ID)")
-                    }
-                    // Host often re-enables CCCD without re-reading Report Map; IOHID then stays absent.
-                    let mapRead = self.macReadReportMapThisGeneration || self.macReadReportMapFlag
-                    self.log.info("Mac Report CCCD; reportMapReadThisGeneration=\(mapRead) republishCount=\(self.hidRepublishCount)")
-                    if !mapRead && !self.keyboardFeatureEnabled {
-                        self.scheduleHIDRepublishForHostRebind(reason: "CCCD without Report Map read")
-                    }
                     self.log.info("Input gate updated; no new input, except completing a pending explicit click release")
                 }
                 self.refreshInputGate()

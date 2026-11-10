@@ -78,11 +78,39 @@ func runKeyboardTests() {
     check(up == Data([2, 0, 0, 0, 0, 0, 0, 0, 0]), "key up")
     _ = kb.step(at: 0.1)
     _ = kb.step(at: 0.15)
-    check(kb.cancel() == nil || true, "cancel ok")
+    check(kb.cancel() == nil, "cancel after complete key-up emits no unsolicited release")
+}
+
+func runLifecycleAndMetadataTests() {
+    for keyboard in [false, true] {
+        let map = HIDMetadata.value(for: "2A4B", keyboardEnabled: keyboard)
+        check(map == Data(keyboard ? HIDDescriptors.mouseKeyboardReportMap : HIDDescriptors.mouseReportMap), "cached map matches report mode")
+        check(HIDMetadata.value(for: "2A4A") == Data([0x11, 0x01, 0, 2]), "cached HID Information")
+        for uuid in ["2A29", "2A24", "2A50"] {
+            check(HIDMetadata.value(for: uuid)?.isEmpty == false, "immutable metadata remains readable without callback: \(uuid)")
+        }
+        for uuid in ["2A4D", "2A19", "2A4E", "2A4C"] {
+            check(HIDMetadata.value(for: uuid) == nil, "mutable attribute stays dynamic: \(uuid)")
+        }
+    }
+    var m = MouseInputState()
+    _ = m.availability(active: true, macReady: true); _ = m.arm()
+    m.beginTouch(x: 0, y: 0, at: 0)
+    check(m.pollLongPress(at: 0.6) == Data([2,0,0,0]), "held right before overlay")
+    check(m.availability(active: false, macReady: true) == Data([0,0,0,0]), "overlay/inactive releases right")
+    check(m.endTouch(at: 0.8).outcome == .none, "inactive lift cannot click")
+    _ = m.availability(active: true, macReady: true); _ = m.arm()
+    check(m.frame(at: 1) == nil, "return cannot replay prior gesture")
+    m.beginTouch(x: 0, y: 0, at: 1); m.moveTouch(x: 20, y: 0)
+    _ = m.availability(active: true, macReady: false)
+    check(m.frame(at: 2) == nil && !m.enabled, "subscription loss disarms and drops movement")
+    _ = m.availability(active: true, macReady: true); _ = m.arm()
+    check(m.frame(at: 3) == nil, "resubscribe requires fresh touch")
 }
 
 runMouseTests()
 runKeyboardTests()
+runLifecycleAndMetadataTests()
 if failed == 0 {
     print("All logic tests passed")
 } else {
