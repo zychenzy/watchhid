@@ -109,6 +109,14 @@ xcrun devicectl device install app --device "$WATCH_UDID"   ./candidate/WatchHID
 
 回来验收的具体手势与听写步骤见 [QUICKSTART.zh-CN.md](QUICKSTART.zh-CN.md)。
 
+### 新 Mac 不要和已成功的开发机混为一谈
+
+在一台已经成功过的 Mac（例如原开发用的 Mac mini）上，系统里往往已经有这条手表 HOGP 的加密蓝牙绑定。那时装上同一个已签名包后，系统可以在几秒内创建 Manufacturer 为 `WatchHID` 的鼠标。归档日志里，这台开发机在验收时已把该设备记为已配对的 BLE HID 鼠标，并且没有出现「因链路未加密而拒绝创建鼠标」的记录。
+
+在一台新 Mac 上，只完成下面这些还不够：Xcode 与 Developer Mode 开发配对、「信任这台电脑」、蓝牙菜单里 Apple Watch 已连接并显示 HID BLE、打开应用后短滑，或只确认一个普通蓝牙弹窗。新机器上的实证是：系统已经连上 HID BLE 并读到鼠标报告描述，但明确「不创建 HID 设备，因为链路未加密」，因此系统里不会出现 `WatchHID`，指针也不会动。
+
+当前默认配方 `standard128` 的 GATT 特征不要求加密，所以新主机可以明文读取报告描述，然后在创建鼠标这一步被拒绝。要把新 Mac 走到和开发机一样的可用状态，需要让这条 HID 连接完成加密绑定。项目里已有 `standard128-encrypted` 配方（特征要求加密读写和通知），可在本机签名安装后验证。成功标准仍是系统出现 `WatchHID` 且指针移动。不要为了这一步重置系统蓝牙，或取消手表的系统配对。
+
 ## 8. 真实验证与听写边界
 
 - 模拟器可以测界面、系统文本输入回调和取消返回，**不能**证明真实蓝牙 HOGP、系统光标因果关系或语音识别。详见 [SIMULATOR-CHECKS.md](SIMULATOR-CHECKS.md)。
