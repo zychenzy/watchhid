@@ -29,6 +29,8 @@ FOUNDATION_EXPORT NSInteger WHPeripheralState(id peripheral);
 FOUNDATION_EXPORT BOOL WHIsAdvertising(id peripheral);
 FOUNDATION_EXPORT void WHRespondToRequest(id peripheral, id request, NSInteger result);
 FOUNDATION_EXPORT BOOL WHUpdateReport(id peripheral, NSData *data, id characteristic);
+/// Same as WHUpdateReport, but notifies only the given subscribed centrals. Pass nil to notify all.
+FOUNDATION_EXPORT BOOL WHUpdateReportToCentrals(id peripheral, NSData *data, id characteristic, NSArray * _Nullable centrals);
 
 /// Raw advertisement keys (may be missing from watchOS Swift overlays).
 FOUNDATION_EXPORT NSString * const WHAdvertisementLocalNameKey;

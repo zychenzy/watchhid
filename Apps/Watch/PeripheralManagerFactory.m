@@ -195,6 +195,17 @@ NSArray<NSString *> *WHRuntimeClassDetails(NSArray<NSString *> *names) {
 void WHRespondToRequest(id peripheral, id request, NSInteger result) {
     ((void (*)(id, SEL, id, NSInteger))objc_msgSend)(peripheral, NSSelectorFromString(@"respondToRequest:withResult:"), request, result);
 }
+BOOL WHUpdateReportToCentrals(id peripheral, NSData *data, id characteristic, NSArray * _Nullable centrals) {
+    if (peripheral == nil || data == nil || characteristic == nil) {
+        return NO;
+    }
+    SEL sel = NSSelectorFromString(@"updateValue:forCharacteristic:onSubscribedCentrals:");
+    if (![peripheral respondsToSelector:sel]) {
+        return NO;
+    }
+    return ((BOOL (*)(id, SEL, id, id, id))objc_msgSend)(peripheral, sel, data, characteristic, centrals);
+}
+
 BOOL WHUpdateReport(id peripheral, NSData *data, id characteristic) {
-    return ((BOOL (*)(id, SEL, id, id, id))objc_msgSend)(peripheral, NSSelectorFromString(@"updateValue:forCharacteristic:onSubscribedCentrals:"), data, characteristic, nil);
+    return WHUpdateReportToCentrals(peripheral, data, characteristic, nil);
 }
