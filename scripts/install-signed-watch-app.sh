@@ -6,11 +6,16 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
+LIB="$ROOT/scripts/watchhid_scriptlib.py"
+LIST_TIMEOUT=30
+INSTALL_TIMEOUT=180
+LAUNCH_TIMEOUT=60
+CODESIGN_TIMEOUT=30
 
 usage() {
   echo "Usage: $0 [WatchHIDWatchApp.app|signed.zip]" >&2
-  echo "If no path is given, uses build/diagnostics/recovery-root/encrypted-hogp/WatchHIDWatchApp.app" >&2
-  echo "or WatchHID-encrypted-hogp.zip in that same directory." >&2
+  echo "If no path is given, prefers build/diagnostics/recovery-root/WatchHID-encrypted-hogp.zip" >&2
+  echo "over a previously extracted encrypted-hogp/WatchHIDWatchApp.app, so a stale extract cannot win." >&2
   exit 2
 }
 
@@ -19,22 +24,19 @@ if [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]]; then
 fi
 
 SRC="${1:-}"
-DEFAULT_APP="$ROOT/build/diagnostics/recovery-root/encrypted-hogp/WatchHIDWatchApp.app"
-DEFAULT_ZIP="$ROOT/build/diagnostics/recovery-root/WatchHID-encrypted-hogp.zip"
+DEFAULT_APP="${WATCHHID_DEFAULT_APP:-$ROOT/build/diagnostics/recovery-root/encrypted-hogp/WatchHIDWatchApp.app}"
+DEFAULT_ZIP="${WATCHHID_DEFAULT_ZIP:-$ROOT/build/diagnostics/recovery-root/WatchHID-encrypted-hogp.zip}"
 if [[ -z "$SRC" ]]; then
-  if [[ -d "$DEFAULT_APP" ]]; then
-    SRC="$DEFAULT_APP"
-  elif [[ -f "$DEFAULT_ZIP" ]]; then
-    SRC="$DEFAULT_ZIP"
-  else
+  SRC="$(python3 "$LIB" choose-default-package "$DEFAULT_APP" "$DEFAULT_ZIP" || true)"
+  if [[ -z "$SRC" ]]; then
     echo "No package path given, and no default encrypted package was found." >&2
     usage
   fi
 fi
 
-ENV_FILE="$ROOT/Config/local_devices.env"
-WATCH_UDID=""
-if [[ -f "$ENV_FILE" ]]; then
+ENV_FILE="${WATCHHID_ENV_FILE:-$ROOT/Config/local_devices.env}"
+WATCH_UDID="${WATCH_UDID:-}"
+if [[ -z "$WATCH_UDID" && -f "$ENV_FILE" ]]; then
   WATCH_UDID="$(awk -F= '/^WATCH_UDID=/{print $2; exit}' "$ENV_FILE" | tr -d '[:space:]')"
 fi
 if [[ -z "$WATCH_UDID" ]]; then
@@ -48,94 +50,45 @@ print_tunnel_help() {
 
 请同时做到这些，然后重新运行本脚本：
 1. 把手表拿近这台 Mac，点亮并解锁，保持屏幕亮着。
-2. 把配对的 iPhone 也拿近并解锁，尽量连同一 Wi-Fi。不必插 USB 线。
-3. 等 devicectl 把这只手表列为 connected，而不仅是 available (paired) 或 unavailable。
+2. 把配对的 iPhone 也拿近并解锁，尽量连同一 Wi-Fi。不必插 USB 线。一次同 Wi-Fi、未插线且 iPhone 已解锁时通道变成 connected 并成功装包，只说明那次可以无线安装，不代表以后都必须有 iPhone，也不代表已验证附近没有 iPhone 时仍能安装。
+3. 等 devicectl 把这只手表列为 connected，而不仅是 available (paired) 或 unavailable。脚本只会按 Config/local_devices.env 里的 WATCH_UDID 精确匹配，不会改装到另一块手表。
 EOF
 }
 
-LIST_JSON="$(mktemp -t watchhid-devicelist)"
+LIST_JSON="$(mktemp "${TMPDIR:-/tmp}/watchhid-devicelist.XXXXXX")"
 cleanup() {
   rm -f "$LIST_JSON"
+  if [[ -n "${INSTALL_JSON:-}" && -f "${INSTALL_JSON:-}" ]]; then
+    rm -f "$INSTALL_JSON"
+  fi
+  if [[ -n "${LAUNCH_JSON:-}" && -f "${LAUNCH_JSON:-}" ]]; then
+    rm -f "$LAUNCH_JSON"
+  fi
   if [[ -n "${WORKDIR:-}" && -d "${WORKDIR:-}" ]]; then
     rm -rf "$WORKDIR"
   fi
 }
 trap cleanup EXIT
 
-if ! xcrun devicectl list devices --json-output "$LIST_JSON" >/dev/null 2>&1; then
-  echo "devicectl could not list devices." >&2
-  print_tunnel_help
-  exit 2
+if [[ -n "${WATCHHID_DEVICELIST_JSON:-}" ]]; then
+  cp "$WATCHHID_DEVICELIST_JSON" "$LIST_JSON"
+else
+  if ! python3 "$LIB" run-bounded --timeout "$LIST_TIMEOUT" -- \
+      xcrun devicectl list devices --timeout "$LIST_TIMEOUT" --json-output "$LIST_JSON" >/dev/null; then
+    echo "devicectl could not list devices, or the command timed out." >&2
+    print_tunnel_help
+    exit 2
+  fi
 fi
 
-STATE="$(WATCH_UDID="$WATCH_UDID" LIST_JSON="$LIST_JSON" python3 - <<'PY'
-import json, os, sys
-from pathlib import Path
-
-udid = os.environ["WATCH_UDID"].strip()
-data = json.loads(Path(os.environ["LIST_JSON"]).read_text())
-
-def looks_like_udid(value: str) -> bool:
-    s = value.strip()
-    return s == udid or s.lower() == udid.lower()
-
-found = []
-
-def walk(obj):
-    if isinstance(obj, dict):
-        name = obj.get("name") or obj.get("deviceName") or (obj.get("deviceProperties") or {}).get("name")
-        ident = str(obj.get("identifier") or obj.get("udid") or obj.get("Identifier") or "")
-        conn = obj.get("connectionProperties") or (obj.get("properties") or {}).get("connection") or {}
-        state = (
-            obj.get("state")
-            or conn.get("state")
-            or conn.get("tunnelState")
-            or obj.get("connectionState")
-        )
-        platform = (
-            (obj.get("hardwareProperties") or {}).get("platform")
-            or obj.get("platform")
-            or ((obj.get("properties") or {}).get("hardware") or {}).get("platform")
-        )
-        if name or platform == "watchOS" or ident:
-            found.append({
-                "name": name,
-                "state": state,
-                "tunnel": conn.get("tunnelState") or conn.get("state"),
-                "platform": platform,
-                "ident": ident,
-            })
-        for v in obj.values():
-            walk(v)
-    elif isinstance(obj, list):
-        for item in obj:
-            walk(item)
-
-walk(data)
-watch = None
-for item in found:
-    if looks_like_udid(item.get("ident") or ""):
-        watch = item
-        break
-if watch is None:
-    for item in found:
-        name = item.get("name") or ""
-        if "Watch" in name or item.get("platform") == "watchOS":
-            watch = item
-            break
-if watch is None:
-    print("missing")
-    sys.exit(0)
-print(watch.get("tunnel") or watch.get("state") or "unknown")
-PY
-)"
+STATE="$(WATCH_UDID="$WATCH_UDID" python3 "$LIB" watch-state "$LIST_JSON")"
 
 echo "Watch developer state: $STATE"
 case "$STATE" in
   connected)
     ;;
   missing)
-    echo "devicectl did not list this Watch." >&2
+    echo "devicectl did not list this Watch (exact UDID only; no fallback to another Watch)." >&2
     print_tunnel_help
     exit 2
     ;;
@@ -150,25 +103,75 @@ WORKDIR=""
 if [[ -d "$SRC" ]]; then
   APP="$SRC"
 elif [[ -f "$SRC" ]]; then
-  WORKDIR="$(mktemp -d -t watchhid-install)"
-  ditto -x -k "$SRC" "$WORKDIR"
+  WORKDIR="$(mktemp -d "${TMPDIR:-/tmp}/watchhid-install.XXXXXX")"
+  if command -v ditto >/dev/null 2>&1; then
+    ditto -x -k "$SRC" "$WORKDIR"
+  else
+    WATCHHID_ZIP_SRC="$SRC" WATCHHID_ZIP_DST="$WORKDIR" python3 - <<'PY'
+import os, zipfile
+zipfile.ZipFile(os.environ["WATCHHID_ZIP_SRC"]).extractall(os.environ["WATCHHID_ZIP_DST"])
+PY
+  fi
   find "$WORKDIR" -name '._*' -delete
-  xattr -cr "$WORKDIR" 2>/dev/null || true
-  APP="$(find "$WORKDIR" -name 'WatchHIDWatchApp.app' -type d | head -1)"
-  if [[ -z "$APP" ]]; then
+  if command -v xattr >/dev/null 2>&1; then
+    xattr -cr "$WORKDIR" 2>/dev/null || true
+  fi
+  APPS=()
+  while IFS= read -r line; do
+    [[ -n "$line" ]] && APPS+=("$line")
+  done <<EOF
+$(find "$WORKDIR" -name 'WatchHIDWatchApp.app' -type d)
+EOF
+  if [[ "${#APPS[@]}" -eq 0 ]]; then
     echo "The archive did not contain WatchHIDWatchApp.app." >&2
     exit 1
   fi
+  if [[ "${#APPS[@]}" -gt 1 ]]; then
+    echo "The archive contained more than one WatchHIDWatchApp.app; refusing to guess." >&2
+    exit 1
+  fi
+  APP="${APPS[0]}"
 else
   echo "Not a .app directory or zip: $SRC" >&2
   exit 1
 fi
 
-codesign --verify --verbose=2 "$APP"
+if [[ "${WATCHHID_DRY_RUN:-}" == "1" ]]; then
+  echo "DRY_RUN: would verify signature, install, and launch WatchHID. Package is ready and the exact UDID is connected."
+  exit 0
+fi
+
+if ! python3 "$LIB" run-bounded --timeout "$CODESIGN_TIMEOUT" -- \
+    codesign --verify --verbose=2 "$APP"; then
+  echo "codesign verification failed or timed out." >&2
+  exit 1
+fi
+
+INSTALL_JSON="$(mktemp "${TMPDIR:-/tmp}/watchhid-install-json.XXXXXX")"
 echo "==> installing signed package"
-xcrun devicectl device install app --device "$WATCH_UDID" "$APP"
+if ! python3 "$LIB" run-bounded --timeout "$INSTALL_TIMEOUT" -- \
+    xcrun devicectl device install app \
+      --device "$WATCH_UDID" \
+      --timeout "$INSTALL_TIMEOUT" \
+      --json-output "$INSTALL_JSON" \
+      --quiet \
+      "$APP"; then
+  echo "Install failed or timed out. Output above is redacted and does not include device identifiers." >&2
+  exit 1
+fi
+
+LAUNCH_JSON="$(mktemp "${TMPDIR:-/tmp}/watchhid-launch-json.XXXXXX")"
 echo "==> launching WatchHID"
-xcrun devicectl device process launch --device "$WATCH_UDID" com.zy.watchhid.watchkitapp
+if ! python3 "$LIB" run-bounded --timeout "$LAUNCH_TIMEOUT" -- \
+    xcrun devicectl device process launch \
+      --device "$WATCH_UDID" \
+      --timeout "$LAUNCH_TIMEOUT" \
+      --json-output "$LAUNCH_JSON" \
+      --quiet \
+      com.zy.watchhid.watchkitapp; then
+  echo "Launch failed or timed out. Output above is redacted and does not include device identifiers." >&2
+  exit 1
+fi
 
 cat <<'EOF'
 Install and launch finished.
@@ -177,6 +180,7 @@ Keep the Watch screen on. If this Mac shows a Bluetooth pairing prompt, confirm 
 
   ./scripts/verify-hogp-mouse.sh
 
-Success is a WatchHID mouse plus actual pointer movement. A connected Apple Watch in Bluetooth settings, or only clicking the pairing prompt, is not enough.
+The verify script only checks same-node IOHID identity (Manufacturer=WatchHID, ModelNumber=Ultra2-R1, mouse/pointer usage). A NODE_OK result is not proof that the pointer moved. Success for a return test is a WatchHID mouse node plus actual pointer movement you see yourself.
+A connected Apple Watch in Bluetooth settings, or only clicking the pairing prompt, is not enough.
 Do not reset system Bluetooth, and do not unpair the system Apple Watch.
 EOF

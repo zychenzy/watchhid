@@ -84,7 +84,7 @@ python3 scripts/test_assess_live_read.py
 
 ## Docs
 
-New Mac prerequisites, when local signing is required, developer-tunnel vs Bluetooth, and the no-bond encrypted HOGP path: [`docs/SETUP.zh-CN.md`](docs/SETUP.zh-CN.md). Reusable steps for a later owner or agent: [`.cursor/skills/watchhid-new-mac-hogp/SKILL.md`](.cursor/skills/watchhid-new-mac-hogp/SKILL.md). Scripts: `scripts/ship-encrypted-hogp.sh`, `scripts/install-signed-watch-app.sh`, `scripts/verify-hogp-mouse.sh`. Index: [`docs/INDEX.md`](docs/INDEX.md). Raw syslog/screenshot/crash packages stay under local `build/diagnostics/` and are not part of the git tree.
+New Mac prerequisites, when local signing is required, developer-tunnel vs Bluetooth, and the encrypted HOGP *candidate* path (not yet proven to complete a first bond or to be quickly reliable on a new Mac): [`docs/SETUP.zh-CN.md`](docs/SETUP.zh-CN.md). Reusable steps: [`.cursor/skills/watchhid-new-mac-hogp/SKILL.md`](.cursor/skills/watchhid-new-mac-hogp/SKILL.md). Scripts: `scripts/ship-encrypted-hogp.sh`, `scripts/install-signed-watch-app.sh`, `scripts/verify-hogp-mouse.sh`. Return checklist: [`docs/RETURN-CHECKLIST.zh-CN.md`](docs/RETURN-CHECKLIST.zh-CN.md). Index: [`docs/INDEX.md`](docs/INDEX.md). Raw syslog/screenshot/crash packages stay under local `build/diagnostics/` and are not part of the git tree.
 
 ## Explicitly out of scope
 

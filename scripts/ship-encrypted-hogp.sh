@@ -1,11 +1,15 @@
 #!/usr/bin/env bash
-# Build and optionally install the new-Mac HOGP package that requires
-# encrypted GATT reads/notifications, so the host must complete HID bonding.
+# Build and optionally install the new-Mac HOGP package whose Report Map /
+# input Report use encrypted reads and (for Report) encrypted notifications,
+# so a host that only did a cleartext read may be pushed to complete HID bonding.
+# This is a build candidate, not a proven first-bond or fast-success path.
 # This does not copy or reuse another Mac's Bluetooth bond. Do not reset
 # system Bluetooth or unpair the system Apple Watch.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
+LIB="$ROOT/scripts/watchhid_scriptlib.py"
+BUILD_TIMEOUT=1800
 
 INSTALL=0
 if [[ "${1:-}" == "--install" ]]; then
@@ -38,12 +42,6 @@ if ! security find-identity -v -p codesigning 2>/dev/null | grep -q 'Apple Devel
   exit 1
 fi
 
-ENV_FILE="$ROOT/Config/local_devices.env"
-WATCH_UDID=""
-if [[ -f "$ENV_FILE" ]]; then
-  WATCH_UDID="$(awk -F= '/^WATCH_UDID=/{print $2; exit}' "$ENV_FILE" | tr -d '[:space:]')"
-fi
-
 echo "==> xcodegen"
 xcodegen generate
 
@@ -54,37 +52,41 @@ APP="$DERIVED/Build/Products/Debug-watchos/WatchHIDWatchApp.app"
 ZIP="$OUT_DIR/WatchHID-encrypted-hogp.zip"
 
 echo "==> signed watchOS build (standard128-encrypted)"
-xcodebuild \
-  -project WatchHID.xcodeproj \
-  -scheme WatchHIDWatchApp \
-  -destination 'generic/platform=watchOS' \
-  -configuration Debug \
-  -derivedDataPath "$DERIVED" \
-  -jobs 2 \
-  -allowProvisioningUpdates \
-  SWIFT_ACTIVE_COMPILATION_CONDITIONS='$(inherited) WH_HOGP_ENCRYPTED' \
-  build
+if ! python3 "$LIB" run-bounded --timeout "$BUILD_TIMEOUT" -- \
+    xcodebuild \
+      -project WatchHID.xcodeproj \
+      -scheme WatchHIDWatchApp \
+      -destination 'generic/platform=watchOS' \
+      -configuration Debug \
+      -derivedDataPath "$DERIVED" \
+      -jobs 2 \
+      -allowProvisioningUpdates \
+      SWIFT_ACTIVE_COMPILATION_CONDITIONS='$(inherited) WH_HOGP_ENCRYPTED' \
+      build; then
+  echo "xcodebuild failed or timed out after ${BUILD_TIMEOUT}s." >&2
+  exit 1
+fi
 
 if [[ ! -d "$APP" ]]; then
   echo "Build finished, but the watch app was not at the expected product path." >&2
   exit 1
 fi
 
-codesign --verify --verbose=2 "$APP"
+if ! python3 "$LIB" run-bounded --timeout 30 -- codesign --verify --verbose=2 "$APP"; then
+  echo "codesign verification failed or timed out." >&2
+  exit 1
+fi
 rm -f "$ZIP"
 ditto -c -k --keepParent "$APP" "$ZIP"
-echo "==> packaged $ZIP"
+echo "==> packaged encrypted zip under build/diagnostics/recovery-root/ (filename not printed with host paths if you copy this log; the file is WatchHID-encrypted-hogp.zip)"
 
 if [[ "$INSTALL" -eq 1 ]]; then
-  if [[ -z "$WATCH_UDID" ]]; then
-    echo "Cannot install: set WATCH_UDID in Config/local_devices.env (gitignored)." >&2
-    exit 1
-  fi
-  echo "==> installing encrypted package on the connected Watch"
-  xcrun devicectl device install app --device "$WATCH_UDID" "$APP"
-  echo "Install finished. Open WatchHID on the Watch, accept a Bluetooth pairing prompt if one appears, keep the screen on, then run: ./scripts/verify-hogp-mouse.sh"
+  echo "==> handing off to install-signed-watch-app.sh (exact UDID, tunnel must be connected)"
+  exec "$ROOT/scripts/install-signed-watch-app.sh" "$APP"
 else
-  echo "Package is ready. Copy the zip to the Mac that will talk to the Watch, unpack, strip ._* if needed, then:"
-  echo "  xcrun devicectl device install app --device \"\$WATCH_UDID\" ./WatchHIDWatchApp.app"
+  echo "Package is ready. Copy WatchHID-encrypted-hogp.zip to the Mac that will talk to the Watch, then:"
+  echo "  ./scripts/install-signed-watch-app.sh /path/to/WatchHID-encrypted-hogp.zip"
+  echo "The install script unpacks a fresh copy from the zip by default so a stale extract is not used."
   echo "Open WatchHID, accept a pairing prompt if it appears, then run ./scripts/verify-hogp-mouse.sh on that Mac."
+  echo "verify-hogp-mouse.sh only checks same-node HID identity; pointer movement is a separate human check."
 fi

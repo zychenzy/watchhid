@@ -1,19 +1,31 @@
 #!/usr/bin/env bash
-# Check whether this Mac has created the WatchHID system mouse.
+# Check whether this Mac has created the WatchHID system mouse on one IOHID node.
 # Does not print Bluetooth addresses or device UDIDs.
+# A passing result is same-node identity only; it does not mean pointer movement was verified.
 set -euo pipefail
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+LIB="$ROOT/scripts/watchhid_scriptlib.py"
+IOREG_TIMEOUT=20
 
-blob="$(ioreg -r -c IOHIDDevice -l 2>/dev/null || true)"
-if printf '%s' "$blob" | grep -q 'WatchHID' && printf '%s' "$blob" | grep -q 'Ultra2-R1'; then
-  echo "OK: system HID includes WatchHID / Ultra2-R1. Short-drag on the watch pad to confirm the pointer moves."
-  exit 0
+FIXTURE="${WATCHHID_IOREG_FILE:-}"
+if [[ -n "$FIXTURE" ]]; then
+  exec python3 "$LIB" verify-hid --ioreg "$FIXTURE"
 fi
 
-if hidutil list 2>/dev/null | grep -qi 'WatchHID'; then
-  echo "OK: hidutil lists WatchHID. Short-drag on the watch pad to confirm the pointer moves."
-  exit 0
-fi
+TMP="$(mktemp "${TMPDIR:-/tmp}/watchhid-ioreg.XXXXXX")"
+cleanup() { rm -f "$TMP"; }
+trap cleanup EXIT
 
-echo "NO: this Mac has not created a WatchHID mouse."
-echo "If the Watch app is open and Bluetooth shows Apple Watch with HID BLE, the usual cause is that the HID link is not encrypted yet. Open WatchHID, accept a pairing prompt if one appears, and do not reset Bluetooth or unpair the system Apple Watch."
-exit 1
+if ! python3 "$LIB" run-bounded --timeout "$IOREG_TIMEOUT" -- \
+    ioreg -r -c IOHIDDevice -l -a >"$TMP" 2>/tmp/watchhid-ioreg-err.$$; then
+  if [[ -s /tmp/watchhid-ioreg-err.$$ ]]; then
+    python3 "$LIB" redact /tmp/watchhid-ioreg-err.$$ >&2 || true
+  fi
+  rm -f /tmp/watchhid-ioreg-err.$$
+  echo "NO: could not read IOHIDDevice registry (timed out or unavailable)."
+  echo "This is not a pointer-movement result. Do not reset Bluetooth."
+  exit 1
+fi
+rm -f /tmp/watchhid-ioreg-err.$$
+
+exec python3 "$LIB" verify-hid --ioreg "$TMP"
