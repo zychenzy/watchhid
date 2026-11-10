@@ -77,7 +77,7 @@ struct ContentView: View {
             Button {
                 startDictation()
             } label: {
-                Label("听写", systemImage: "mic.fill")
+                Label("语音听写", systemImage: "mic.fill")
                     .font(.caption2.bold())
                     .frame(maxWidth: .infinity, minHeight: 28)
             }
@@ -85,6 +85,7 @@ struct ContentView: View {
             .tint(.orange)
             .disabled(false)
             .accessibilityIdentifier("dictation-button")
+            .accessibilityHint("若显示键盘，点右下角输入方式，再选麦克风。")
 
             if !probe.lastTypeStatus.isEmpty {
                 Text(probe.lastTypeStatus)
@@ -124,6 +125,7 @@ struct ContentView: View {
             logStore.warn("Dictation unavailable: no visible interface controller")
             return
         }
+        logStore.info("Voice text entry requested; system selects initial input method")
         dictationPresented = true
         probe.setInputUIBlocked(true)
         // System text entry returns a String; nothing is typed into the Mac automatically.
@@ -201,6 +203,9 @@ struct PadSettingsSheet: View {
                     get: { probe.keyboardFeatureEnabled },
                     set: { probe.setKeyboardFeatureEnabled($0) }
                 ))
+                Text("语音听写：若系统先显示键盘，点右下角输入方式，再选麦克风；说完点 Done 查看文字。不会自动输入 Mac。")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
                 Text("打开键盘会换成鼠标+键盘复合描述符，可能需 Mac 重新枚举。关闭即回滚基线鼠标图。")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
