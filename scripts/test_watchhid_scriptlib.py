@@ -136,6 +136,20 @@ class WatchStateTests(unittest.TestCase):
         )
         self.assertEqual(lib.watch_developer_state(data, TARGET), "missing")
 
+    def test_matches_hardware_udid_when_coredevice_identifier_differs(self):
+        data = device_list(
+            {
+                "identifier": FAKE_UUID,
+                "deviceProperties": {"name": "Target Watch"},
+                "hardwareProperties": {"platform": "watchOS", "udid": TARGET},
+                "connectionProperties": {
+                    "transport": "localNetwork",
+                    "tunnelState": "connected",
+                },
+            }
+        )
+        self.assertEqual(lib.watch_developer_state(data, TARGET), "connected")
+
 
 class VerifyNodeTests(unittest.TestCase):
     def test_same_node_identity_and_usage_passes(self):
