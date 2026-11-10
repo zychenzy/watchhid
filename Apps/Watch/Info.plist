@@ -4,6 +4,14 @@
 <dict>
 	<key>CFBundleDisplayName</key>
 	<string>WatchHID</string>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>en</string>
+	<key>CFBundleLocalizations</key>
+	<array>
+		<string>en</string>
+		<string>zh-Hans</string>
+		<string>zh-Hant</string>
+	</array>
 	<key>WKCompanionAppBundleIdentifier</key>
 	<string>com.zy.watchhid</string>
 	<key>NSBluetoothAlwaysUsageDescription</key>

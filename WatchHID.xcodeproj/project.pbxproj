@@ -10,6 +10,7 @@
 		03A04A1E03CECAE1C8713578 /* WatchLogInbox.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E1042AAC9182ECFD3F5FC11 /* WatchLogInbox.swift */; };
 		0FF3D0BC11085B11A7FB88AD /* SystemTextEntryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D3B2AC9155A7AA6DBDFA6A10 /* SystemTextEntryTests.swift */; };
 		1793EFF2CF55D6BF98D1B922 /* LogStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = D391F124F26978C6EA9CE92E /* LogStore.swift */; };
+		2355E9E5FBB46F0FFC8DCBD9 /* L10n.swift in Sources */ = {isa = PBXBuildFile; fileRef = C44047FF9E6E85E97582F662 /* L10n.swift */; };
 		301B0E7434CE00BC7E7D06C7 /* HIDMetadata.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1E0A87921C8F36732951D39 /* HIDMetadata.swift */; };
 		3955D5CF2320D18CA0C38B62 /* HIDDescriptors.swift in Sources */ = {isa = PBXBuildFile; fileRef = F57B97A047F9857D9E240285 /* HIDDescriptors.swift */; };
 		3DFA40E4337FD0076A1927C6 /* ChecklistView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D902E4B19FE4FDDEEAC50856 /* ChecklistView.swift */; };
@@ -21,6 +22,7 @@
 		8B3737AA07380EBE4D1A41F4 /* WatchHIDApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3252ADA39FC701DE6675A667 /* WatchHIDApp.swift */; };
 		8D1F7C49B3D65EAC282FC85C /* LogEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDBD31517FD5FE527FAB7FB6 /* LogEntry.swift */; };
 		91B26999AEA84E349759C8F6 /* KeyboardInputState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 047E8037B023988114B6014B /* KeyboardInputState.swift */; };
+		92AD50746422E3C84CC1AD5B /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 7D00022EBEC4BFDB86A7745A /* Localizable.strings */; };
 		9DD3AC587E4E530C32127FC3 /* PeripheralProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C6C61FC4163BFA17B9A8418 /* PeripheralProbe.swift */; };
 		A25590A8B58294F64719391B /* BLEScanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5A0067C1EC1DF9909F9B731 /* BLEScanner.swift */; };
 		ACB011887E8053A42457B5C6 /* WatchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13B069EDE22D71C7F8BFD107 /* WatchApp.swift */; };
@@ -70,7 +72,9 @@
 		05B5D0BB50EDC1EE8902F855 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		0F35DD9D8B1B5F2559F51BCC /* WatchHID.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = WatchHID.entitlements; sourceTree = "<group>"; };
 		13B069EDE22D71C7F8BFD107 /* WatchApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchApp.swift; sourceTree = "<group>"; };
+		17522589C493364D0A62D1AF /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
 		178D3FFCBF79E07DB3496528 /* WatchHIDWatch-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "WatchHIDWatch-Bridging-Header.h"; sourceTree = "<group>"; };
+		28B0C8B51971B141F86A6CDE /* zh-Hant */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hant"; path = "zh-Hant.lproj/Localizable.strings"; sourceTree = "<group>"; };
 		2C6C61FC4163BFA17B9A8418 /* PeripheralProbe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PeripheralProbe.swift; sourceTree = "<group>"; };
 		3252ADA39FC701DE6675A667 /* WatchHIDApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchHIDApp.swift; sourceTree = "<group>"; };
 		355CD0CB069653CDE1059908 /* RuntimeEnumerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RuntimeEnumerator.swift; sourceTree = "<group>"; };
@@ -83,7 +87,9 @@
 		9E65FE9002DE5DD83C68D2C3 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		9E9BEC3135FA4D3603247DE4 /* PeripheralManagerFactory.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = PeripheralManagerFactory.h; sourceTree = "<group>"; };
 		AB1DC3443ED5190421DD8574 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		BD38BF2FB4A32DEE1F1BA0DA /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/Localizable.strings"; sourceTree = "<group>"; };
 		C1E0A87921C8F36732951D39 /* HIDMetadata.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HIDMetadata.swift; sourceTree = "<group>"; };
+		C44047FF9E6E85E97582F662 /* L10n.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = L10n.swift; sourceTree = "<group>"; };
 		C60B85B52CD2620AEC15823B /* Developer.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Developer.xcconfig; sourceTree = "<group>"; };
 		D0E78A02616F6075C457B27A /* WatchHIDUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = WatchHIDUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		D391F124F26978C6EA9CE92E /* LogStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogStore.swift; sourceTree = "<group>"; };
@@ -141,8 +147,10 @@
 		9862D4DC793DD248B5149979 /* Watch */ = {
 			isa = PBXGroup;
 			children = (
+				7D00022EBEC4BFDB86A7745A /* Localizable.strings */,
 				9E65FE9002DE5DD83C68D2C3 /* Assets.xcassets */,
 				8B00F6965BE0AD88A4CB6D20 /* Info.plist */,
+				C44047FF9E6E85E97582F662 /* L10n.swift */,
 				D391F124F26978C6EA9CE92E /* LogStore.swift */,
 				9E9BEC3135FA4D3603247DE4 /* PeripheralManagerFactory.h */,
 				4C1DCF1556640520CD7CD175 /* PeripheralManagerFactory.m */,
@@ -283,6 +291,8 @@
 			knownRegions = (
 				Base,
 				en,
+				"zh-Hans",
+				"zh-Hant",
 			);
 			mainGroup = 3A233EF7B04DA4C1FF37364B;
 			minimizedProjectReferenceProxies = 1;
@@ -312,6 +322,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				84B97F4F6F55B1FAE7C43F70 /* Assets.xcassets in Resources */,
+				92AD50746422E3C84CC1AD5B /* Localizable.strings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -350,6 +361,7 @@
 				E8BDAEE5F762C438837BA3A9 /* HIDDescriptors.swift in Sources */,
 				301B0E7434CE00BC7E7D06C7 /* HIDMetadata.swift in Sources */,
 				91B26999AEA84E349759C8F6 /* KeyboardInputState.swift in Sources */,
+				2355E9E5FBB46F0FFC8DCBD9 /* L10n.swift in Sources */,
 				EFD93EDDE452DD05AB357901 /* LogEntry.swift in Sources */,
 				1793EFF2CF55D6BF98D1B922 /* LogStore.swift in Sources */,
 				BC0E392174518CBEF23FEBF6 /* MouseInputState.swift in Sources */,
@@ -374,6 +386,19 @@
 			targetProxy = 4C52A96F9D9E1346E2D0F299 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
+
+/* Begin PBXVariantGroup section */
+		7D00022EBEC4BFDB86A7745A /* Localizable.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				17522589C493364D0A62D1AF /* en */,
+				BD38BF2FB4A32DEE1F1BA0DA /* zh-Hans */,
+				28B0C8B51971B141F86A6CDE /* zh-Hant */,
+			);
+			name = Localizable.strings;
+			sourceTree = "<group>";
+		};
+/* End PBXVariantGroup section */
 
 /* Begin XCBuildConfiguration section */
 		5159377A093DC1DE04E07E40 /* Release */ = {

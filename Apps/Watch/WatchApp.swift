@@ -37,7 +37,7 @@ struct ContentView: View {
     var body: some View {
         VStack(spacing: 4) {
             HStack(spacing: 6) {
-                Text("触控板").font(.caption.bold())
+                Text(L10n.string("pad.title")).font(.caption.bold())
                 Spacer()
                 Circle()
                     .fill(probe.mouseEnabled ? Color.green : Color.gray)
@@ -59,7 +59,7 @@ struct ContentView: View {
                 .overlay {
                     VStack(spacing: 2) {
                         Image(systemName: probe.mouseTouching ? "hand.draw.fill" : "hand.draw")
-                        Text(probe.mouseEnabled ? "拖移 · 轻点左键 · 长按右键" : "等待就绪")
+                        Text(probe.mouseEnabled ? L10n.string("pad.hint.enabled") : L10n.string("pad.hint.waiting"))
                             .font(.system(size: 10))
                             .multilineTextAlignment(.center)
                     }
@@ -74,13 +74,13 @@ struct ContentView: View {
                         }
                         .onEnded { _ in probe.touchpadEnded() }
                 )
-                .accessibilityLabel("触控板")
+                .accessibilityLabel(L10n.string("pad.a11y"))
                 .accessibilityIdentifier("mouse-touchpad")
 
             Button {
                 startDictation()
             } label: {
-                Label("语音听写", systemImage: "mic.fill")
+                Label(L10n.string("dictation.button"), systemImage: "mic.fill")
                     .font(.caption2.bold())
                     .frame(maxWidth: .infinity, minHeight: 28)
             }
@@ -88,7 +88,7 @@ struct ContentView: View {
             .tint(.orange)
             .disabled(false)
             .accessibilityIdentifier("dictation-button")
-            .accessibilityHint("若显示键盘，点右下角输入方式，再选麦克风。")
+            .accessibilityHint(L10n.string("dictation.hint"))
 
             if !probe.lastTypeStatus.isEmpty {
                 Text(probe.lastTypeStatus)
@@ -181,20 +181,22 @@ struct DictationReviewSheet: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 8) {
-                Text("听写结果").font(.headline)
-                Text("文字仅保留在手表，不会自动输入 Mac。")
+                Text(L10n.string("dictation.review.title")).font(.headline)
+                    .accessibilityIdentifier("dictation-review-title")
+                Text(L10n.string("dictation.review.stays_on_watch"))
                     .font(.caption2)
                     .foregroundStyle(.secondary)
                 Text(probe.dictationPreview ?? "")
                     .font(.body)
                 HStack {
-                    Button("完成") {
+                    Button(L10n.string("dictation.review.done")) {
                         probe.clearDictationPreview()
                         dismiss()
                     }
+                    .accessibilityIdentifier("dictation-review-done")
                     Spacer()
                     if probe.keyboardFeatureEnabled {
-                    Button("发送英文") {
+                    Button(L10n.string("dictation.review.send_english")) {
                         if let text = probe.dictationPreview {
                             probe.typeReviewedASCII(text)
                         }
@@ -205,7 +207,7 @@ struct DictationReviewSheet: View {
                     }
                 }
                 if !probe.keyboardFeatureEnabled {
-                    Text("英文发送仍是实验功能；当前只查看听写文字。")
+                    Text(L10n.string("dictation.review.keyboard_off_note"))
                         .font(.caption2)
                         .foregroundStyle(.orange)
                 }
@@ -222,26 +224,26 @@ struct PadSettingsSheet: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 10) {
-                Text("设置").font(.headline)
-                Toggle("暂停触控输入", isOn: Binding(
+                Text(L10n.string("settings.title")).font(.headline)
+                Toggle(L10n.string("settings.pause_input"), isOn: Binding(
                     get: { probe.inputPausedByUser },
                     set: { probe.setInputPaused($0) }
                 ))
-                Toggle("英文键盘 HID（实验）", isOn: Binding(
+                Toggle(L10n.string("settings.english_keyboard"), isOn: Binding(
                     get: { probe.keyboardFeatureEnabled },
                     set: { probe.setKeyboardFeatureEnabled($0) }
                 ))
-                Text("语音听写：若系统先显示键盘，点右下角输入方式，再选麦克风；说完点 Done 查看文字。不会自动输入 Mac。")
+                Text(L10n.string("settings.dictation_help"))
                     .font(.caption2)
                     .foregroundStyle(.secondary)
-                Text("打开键盘会换成鼠标+键盘复合描述符，可能需 Mac 重新枚举。关闭即回滚基线鼠标图。")
+                Text(L10n.string("settings.keyboard_help"))
                     .font(.caption2)
                     .foregroundStyle(.secondary)
                 if probe.keyboardBusy {
-                    Button("取消键盘发送") { probe.cancelTyping() }
+                    Button(L10n.string("settings.cancel_keyboard")) { probe.cancelTyping() }
                 }
                 Text(probe.inputStatus).font(.caption2)
-                Button("完成") { dismiss() }
+                Button(L10n.string("settings.done")) { dismiss() }
                     .frame(maxWidth: .infinity)
             }
             .padding()

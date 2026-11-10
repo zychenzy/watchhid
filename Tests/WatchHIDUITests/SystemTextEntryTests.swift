@@ -23,12 +23,12 @@ final class SystemTextEntryTests: XCTestCase {
         app.typeText("watch test")
         capture("02-typed-not-speech")
         done.tap()
-        XCTAssertTrue(app.staticTexts["听写结果"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["dictation-review-title"].waitForExistence(timeout: 10))
         XCTAssertTrue(app.staticTexts["watch test"].exists)
         capture("03-real-completion-preview")
-        app.buttons["完成"].tap()
+        app.buttons["dictation-review-done"].tap()
         XCTAssertTrue(app.buttons["dictation-button"].waitForExistence(timeout: 10))
-        XCTAssertFalse(app.staticTexts["听写结果"].exists)
+        XCTAssertFalse(app.staticTexts["dictation-review-title"].exists)
         capture("04-return-after-done")
     }
 
@@ -41,7 +41,7 @@ final class SystemTextEntryTests: XCTestCase {
         XCTAssertTrue(cancel.waitForExistence(timeout: 15))
         cancel.tap()
         XCTAssertTrue(app.buttons["dictation-button"].waitForExistence(timeout: 10))
-        XCTAssertFalse(app.staticTexts["听写结果"].exists)
+        XCTAssertFalse(app.staticTexts["dictation-review-title"].exists)
         capture("05-return-after-cancel")
     }
 }
