@@ -1,97 +1,82 @@
 # WatchHID
 
-Use an Apple Watch as a **real Bluetooth LE HID mouse** for a paired Mac.
+Use an Apple Watch as a real Bluetooth LE HID mouse for a Mac. No extra hardware, and no Mac accessibility helper for the pointer.
 
-## Status (2026-11-09 HKT)
+This repository is written in English. The Watch app UI is still Chinese in the current build; the docs use the on-screen strings as they appear today.
+
+## Status (2026-11-10, Asia/Shanghai)
 
 | Path | Status |
 |---|---|
-| **Mac direct BLE mouse / Watch touchpad** | **Accepted by owner after live move + click** on Mac mini |
-| iPhone system HID / AssistiveTouch / UU remote path | **Not achieved** |
-| watchOS `CBPeripheralManager` | Runtime-created via existing factory; **SDK marks peripheral APIs `API_UNAVAILABLE(watchos)`** — works empirically on this setup, **no supported stability guarantee** |
+| Mac as a direct BLE HOGP mouse | Confirmed on two Macs: same-node identity `WatchHID` / `Ultra2-R1`, plus pointer movement the operator saw. A new Mac needs its own encrypted HOGP bond and a build that accepts any Report subscriber. |
+| Watch dictation | System dictation can capture text for review on the Watch. It does not type into the Mac by default. Live English capture on the current build is the next check. |
+| English HID keyboard into the Mac | Implemented but **off** by default. Do not enable it unless you are ready for the Mac to re-enumerate the HID device. |
+| iPhone system HID / AssistiveTouch / UU remote | Not achieved. |
 
-Tonight’s usable surface is the Watch **Mac 触控板** UI: explicit enable, large finger drag pad, separate left-click. Default is no motion/click.
+watchOS marks `CBPeripheralManager` APIs `API_UNAVAILABLE(watchos)`. This project creates the peripheral at runtime and it works on the setups below. That is not a supported stability guarantee for future watchOS.
 
-## Limits (honest)
+## Requirements
 
-- **Foreground / screen-off:** input stops on inactive/background; after sleep or return-to-clock you may need to reopen and tap **启用输入** again. No claimed continuous 75s window, no screen-off background mouse, no fake workout / extended-runtime category.
-- **SDK unavailable:** peripheral role is unsupported in public watchOS SDK headers; this project uses the already-present runtime factory. That is not proof of future OS compatibility.
-- **Input gate (source vs installed package):** Current source (`dc02abf` and later) arms the pad and sends reports when at least one Report CCCD subscriber is present; it no longer requires one hardcoded Mac central. The encrypted package still installed on the Watch (as of 2026-11-10) is the older exact-match build, so a new Mac can subscribe and still see `等待 Mac 系统订阅` until that source is signed and installed. Do not print the old identifier. Pairing and encryption on a new Mac were evidenced at 14:01 Asia/Shanghai that day; WatchHID identity and pointer movement are still open. Do not reset that bond.
-- **iPhone:** App-level GATT discovery/read was sometimes possible; **system mouse acceptance was not**.
+- A Mac with full Xcode (not only Command Line Tools)
+- An Apple Watch with Developer Mode enabled, and the iPhone it is paired with
+- A free or paid Apple Developer Apple ID for signing. The macOS login account may be different; do not change the Mac login just to sign.
+
+The method works for another Apple Watch and another Mac. Copy local config from the templates; do not commit device UDIDs, team files, private keys, or provisioning profiles.
+
+## Quick start
+
+Full steps, including every dialog you have to confirm yourself, are in [docs/setup.md](docs/setup.md). After the app is installed, use [docs/usage.md](docs/usage.md). If something fails, see [docs/troubleshooting.md](docs/troubleshooting.md).
+
+On a Mac that already has the project:
+
+```bash
+cp Config/Developer.xcconfig.example Config/Developer.xcconfig   # once; fill DEVELOPMENT_TEAM
+cp Config/local_devices.env.example Config/local_devices.env     # once; fill this Watch's UDID
+./scripts/check-signing-prereqs.sh
+# If the script says WWDR G3 is missing:
+./scripts/check-signing-prereqs.sh --install-wwdr
+./scripts/ship-encrypted-hogp.sh
+./scripts/install-signed-watch-app.sh
+```
+
+Then open WatchHID on the Watch, confirm a Bluetooth pairing prompt if macOS shows one, short-drag on the pad, and run:
+
+```bash
+./scripts/verify-hogp-mouse.sh
+```
+
+`NODE_OK` means this Mac sees the WatchHID mouse node. It is not proof that the pointer moved. Success is that node plus movement you see yourself.
 
 ## Layout
 
 ```
-Apps/Watch/     Watch app: dynamic HID peripheral + Mac touchpad UI
-Apps/iOS/       Companion / diagnostics (not required for Mac mouse use)
-Shared/         HID descriptors + pure MouseInputState
-Config/         Developer.xcconfig.example + local_devices.env.example
-scripts/        build, pure logic tests, sanitized diagnostic runners
-docs/           INDEX + experiment notes (no raw logs/screenshots in git)
+Apps/Watch/     Watch app: HID peripheral + touchpad + dictation
+Apps/iOS/       Companion / diagnostics (not required for the Mac mouse)
+Shared/         HID descriptors and input state
+Config/         Tracked templates; local signing and device files are gitignored
+scripts/        Build, install, signing preflight, and verification
+docs/           Setup, usage, troubleshooting, and research notes
 project.yml     XcodeGen source
 ```
 
-Local-only (gitignored): `Config/Developer.xcconfig`, `Config/local_devices.env`, entire `build/` tree (diagnostics, DerivedData copies, screenshots, logs).
+Local-only (gitignored): `Config/Developer.xcconfig`, `Config/local_devices.env`, and the entire `build/` tree.
 
-## Build / sign
+## Limits
 
-Setting up Xcode and a signing identity on a new Mac: [`docs/SETUP.zh-CN.md`](docs/SETUP.zh-CN.md) §4. The Mac login / iCloud account may differ from the Xcode signing Apple ID; do not switch the system account just to sign. Use the existing developer Apple ID and the same team. Create an **Apple Development** certificate on this Mac via Xcode > Settings > Accounts > the team > Manage Certificates… > “+”; the private key stays in this Mac’s Keychain. Do not copy private keys from another Mac, and do not revoke another machine’s certificate just to make room unless the owner explicitly approves. Installing a still-valid already-signed Watch `.app` does not require a local certificate.
+- Input only works while WatchHID is in the foreground with the screen on. After the Watch sleeps or returns to the clock face, open the app again.
+- An encrypted HOGP bond cannot be copied from another Mac. System Apple Watch pairing and iCloud do not bring it with you.
+- Installing the Watch app uses the CoreDevice developer tunnel. A Bluetooth-connected Watch is not the same as a `connected` developer tunnel.
+- Free personal-team provisioning usually expires in about seven days. Re-sign on this Mac with the same Apple ID. That is acceptable.
 
-Unsigned simulator compile:
+## Out of scope
 
-```bash
-./scripts/build.sh
-```
-
-Signed Watch device build (free personal team):
-
-```bash
-cp Config/Developer.xcconfig.example Config/Developer.xcconfig   # once
-# put your DEVELOPMENT_TEAM into Config/Developer.xcconfig
-xcodegen generate
-xcodebuild -project WatchHID.xcodeproj -scheme WatchHIDWatchApp \
-  -destination 'generic/platform=watchOS' -configuration Debug \
-  -derivedDataPath build/DerivedData-nudge -jobs 2 build
-xcrun devicectl device install app --device "$WATCH_UDID" \
-  build/DerivedData-nudge/Build/Products/Debug-watchos/WatchHIDWatchApp.app
-```
-
-Free Apple ID signing typically needs manual re-sign about every 7 days. Prefer Xcode Run if `devicectl` activation is flaky. Phone USB is **not** required for the Mac BLE HID path once Watch is installed, and it is not required for a wireless developer install either; the Watch and the paired iPhone should be nearby, unlocked, and preferably on the same Wi-Fi until `devicectl` shows the Watch as `connected`. Use `./scripts/install-signed-watch-app.sh` rather than calling `devicectl` by hand. A Bluetooth-connected Watch is not the same as a connected developer tunnel.
-
-## Use on Mac (owner-verified flow)
-
-1. On the Mac, move the pointer to a **safe blank area**.
-2. Open **WatchHID** on the Watch.
-3. When status shows **Mac 已订阅 · 待启用**, tap **启用输入**.
-4. Drag on the large pad (relative move). Lift to stop. Optional: tap **左键单击** once if the location is safe.
-5. Tap **停用输入** when finished.
-
-Advertising of the known `standard128-dynamic` recipe can start on launch; **input never auto-enables** and never injects motion/click by itself.
+External chips, Mac accessibility or event-injection helpers as the mouse path, unpairing or resetting Bluetooth as a fix, and claiming iPhone system-HID success.
 
 ## Tests (no system input)
 
 ```bash
 swiftc Shared/MouseInputState.swift scripts/MouseInputStateTests.swift \
   -o /tmp/watchhid-mouse-tests && /tmp/watchhid-mouse-tests
+python3 scripts/test_watchhid_scriptlib.py
 python3 scripts/test_assess_live_read.py
 ```
-
-## Proven vs not proven
-
-**Proven on the original Mac mini:** Mac system IOHID node with Manufacturer `WatchHID`, Model `Ultra2-R1`, 4-byte report map matching `Shared/HIDDescriptors.swift`; owner-confirmed pointer move + click via Watch touchpad over BLE.
-
-**Proven on a new Mac (2026-11-10, Asia/Shanghai), and still open:** pairing and encryption can complete, and BTLEServer can start an `IOHIDUserDevice`. The created mouse node used the system Apple Watch identity (`Apple Inc.` / `Watch7,5`), not `WatchHID` / `Ultra2-R1`, and a short drag + tap did not move the pointer. The encrypted path is not yet a quickly reliable success. Details: [`docs/new-mac-hogp-2026-11-10.zh-CN.md`](docs/new-mac-hogp-2026-11-10.zh-CN.md).
-
-**Not proven:** iPhone system HID binding, UU remote use, cold-cache GATT claims, always-on/background mouse, or that SDK-unavailable APIs remain available on future watchOS.
-
-## Docs
-
-Once the project is on this Mac, the default rebuild path is a local Apple Development identity plus `./scripts/ship-encrypted-hogp.sh`. Check tools, the gitignored `Config/Developer.xcconfig`, and a usable identity (certificate + private key) with `./scripts/check-signing-prereqs.sh`. A still-valid pre-signed zip can be installed without a local cert, but that is not the preferred rebuild path, and the previous signing Mac is not required for packaging. New Mac prerequisites, developer-tunnel vs Bluetooth, and the encrypted HOGP path (pairing and encryption evidenced on a new Mac on 2026-11-10; WatchHID identity and pointer movement still open, so not yet a quickly reliable success): [`docs/SETUP.zh-CN.md`](docs/SETUP.zh-CN.md). Same-day evidence: [`docs/new-mac-hogp-2026-11-10.zh-CN.md`](docs/new-mac-hogp-2026-11-10.zh-CN.md). Reusable steps: [`.cursor/skills/watchhid-new-mac-hogp/SKILL.md`](.cursor/skills/watchhid-new-mac-hogp/SKILL.md). Scripts: `scripts/check-signing-prereqs.sh`, `scripts/ship-encrypted-hogp.sh`, `scripts/install-signed-watch-app.sh`, `scripts/verify-hogp-mouse.sh`. Return checklist: [`docs/RETURN-CHECKLIST.zh-CN.md`](docs/RETURN-CHECKLIST.zh-CN.md). Index: [`docs/INDEX.md`](docs/INDEX.md). Raw syslog/screenshot/crash packages stay under local `build/diagnostics/` and are not part of the git tree. Do not commit private keys, `.p12`/`.cer`, or provisioning profiles.
-
-## Explicitly out of scope
-
-External chips, Mac accessibility/helper injection as the mouse path, unpairing/BT reset as a “fix”, cloud push of private device logs, or claiming iPhone success.
-
-## Current local candidate
-
-Chinese quick start and honest acceptance limits: [回来后试用](docs/QUICKSTART.zh-CN.md). Recovery evidence and regression matrix: [HOGP recovery](docs/HOGP-RECOVERY.md). Signed current/rollback archives remain local under `build/diagnostics/recovery-root/`; no release or push is implied.

@@ -82,4 +82,4 @@ See `build/diagnostics/r5-client/iphone-only-20261109-224821/RESULTS.md`. Short1
 See `docs/r5-att242-causal-audit.md`. Correction: historical absence of MainActor-delivered ATT log rows does not prove delegate non-invocation. Callback replies already occur before that hop; the local observation fix is not an availability/root-cause fix and is not deployed. No new phone window. Tonight shifts to explicit Watch finger-drag Mac BLE HID usability, not an iPhone acceptance claim.
 
 ## Mac BLE touchpad MVP installed
-See `docs/mac-touchpad-mvp.md`: new UI visually confirmed disabled with Mac subscriber; exact-descriptor system BLE IOHID node present. No automated movement/click, human test pending.24 logic tests+12 evidence-gate tests passed. Phone USB not used/required for actual HID input.
+See `mac-touchpad-mvp.md`: new UI visually confirmed disabled with Mac subscriber; exact-descriptor system BLE IOHID node present. No automated movement/click, human test pending.24 logic tests+12 evidence-gate tests passed. Phone USB not used/required for actual HID input.

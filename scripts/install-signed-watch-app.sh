@@ -46,12 +46,12 @@ fi
 
 print_tunnel_help() {
   cat <<'EOF'
-开发安装通道现在不可用。这和蓝牙菜单里 Apple Watch 已连接不是一回事，也不要为此重置蓝牙或取消手表的系统配对。
+The Watch developer tunnel is not available. A Bluetooth-connected Apple Watch is not the same thing. Do not reset Bluetooth or unpair the Watch to fix this.
 
-请同时做到这些，然后重新运行本脚本：
-1. 把手表拿近这台 Mac，点亮并解锁，保持屏幕亮着。
-2. 把配对的 iPhone 也拿近并解锁，尽量连同一 Wi-Fi。不必插 USB 线。一次同 Wi-Fi、未插线且 iPhone 已解锁时通道变成 connected 并成功装包，只说明那次可以无线安装，不代表以后都必须有 iPhone，也不代表已验证附近没有 iPhone 时仍能安装。
-3. 等 devicectl 把这只手表列为 connected，而不仅是 available (paired) 或 unavailable。脚本只会按 Config/local_devices.env 里的 WATCH_UDID 精确匹配，不会改装到另一块手表。
+Do all of the following, then run this script again:
+1. Bring the Watch close to this Mac, wake and unlock it, and keep the screen on.
+2. Bring the paired iPhone close, unlock it, and join the same Wi-Fi if you can. A USB cable is not required. A wireless install can succeed while the iPhone is nearby, unlocked, and on the same Wi-Fi; that does not mean the iPhone is always required, and it does not prove install still works when no iPhone is nearby.
+3. Wait until devicectl lists this Watch as connected, not only available (paired) or unavailable. The script matches the exact WATCH_UDID in Config/local_devices.env and will not install onto a different Watch.
 EOF
 }
 
