@@ -61,6 +61,7 @@ else
       echo "The certificate is paired with a private key on this Mac; trust evaluation failed (CSSMERR_TP_NOT_TRUSTED). This is often a missing WWDR G3 intermediate, not a missing key." >&2
       echo "Download https://www.apple.com/certificateauthority/AppleWWDRCAG3.cer and install it into the login keychain only:" >&2
       echo "  security add-certificates -k ~/Library/Keychains/login.keychain-db AppleWWDRCAG3.cer" >&2
+      echo "macOS will usually ask for the login keychain password or an Allow prompt; confirm it in the official dialog. That authorizes installing Apple's official intermediate, and is not creating a new Apple Development certificate." >&2
       echo "Do not set custom trust to Always Trust, do not revoke or delete the Apple Development certificate, and do not import a private key from another Mac." >&2
     else
       echo "A paired identity exists but is not valid. Check certificate trust and the WWDR G3 intermediate before creating or revoking certificates." >&2

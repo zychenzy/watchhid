@@ -47,3 +47,7 @@ Manufacturer 只有 “Apple Inc.”、没有 PnP，说明当时至少读到了�
 ## 下一步
 
 不要立刻重置蓝牙。接受当前实际订阅者作为输入主机的源码修改已在本分支，但尚未签名安装到手表。这台 MacBook 在 2026-11-10 当时没有可用的 Apple Development 身份，所以 11:54 的加密包是在 mini 上签的；以后要在这台电脑上出包，按 [SETUP.zh-CN.md](SETUP.zh-CN.md) 第 4 节在本机为同一开发 Apple ID 创建证书即可，不必回到原先的签名机，也不要拷私钥或吊销其他电脑的证书。装上后再验证 WatchHID 身份和指针移动。若门打开后身份仍不是 `WatchHID` / `Ultra2-R1`，再单独考虑非 Apple PnP 或如何让系统发布项目自己的 Device Information。
+
+## 本机签名身份（2026-11-10 15:36–15:39，北京时间）
+
+Xcode 里当天的 Apple Development 证书已在钥匙串（状态空白），`security find-identity -v -p codesigning` 仍为空，是因为登录/系统钥匙串缺少官方 WWDR G3 中间证书（只有已过期的同名旧 WWDR），不是私钥缺失，也不是需要再创建一张开发证书。从 [Apple PKI](https://www.apple.com/certificateauthority/AppleWWDRCAG3.cer) 下载后执行 `security add-certificates` 写入登录钥匙串时，系统弹出了钥匙串密码/允许提示；在本机确认后，身份变为可用。随后 `./scripts/check-signing-prereqs.sh` 通过，`./scripts/ship-encrypted-hogp.sh`（不加 `--install`）在本机签出 `build/diagnostics/recovery-root/WatchHID-encrypted-hogp.zip`（sha256 `c8c48cf1c361fcd5e813fdd314038bd50399375f0d79fa4e6be9455b806ebfde`）。不要把这次密码提示理解成又触发了证书创建。
