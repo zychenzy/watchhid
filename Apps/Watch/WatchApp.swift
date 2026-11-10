@@ -35,65 +35,71 @@ struct ContentView: View {
     private var inputOverlayVisible: Bool { showSettings || dictationPresented }
 
     var body: some View {
-        VStack(spacing: 2) {
-            HStack(spacing: 6) {
-                Circle()
-                    .fill(probe.mouseEnabled ? Color.green : Color.gray)
-                    .frame(width: 7, height: 7)
-                Text(probe.inputStatus)
-                    .font(.system(size: 10))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
-                Spacer(minLength: 0)
-                Button { showSettings = true } label: {
-                    Image(systemName: "ellipsis.circle")
-                        .font(.caption)
+        RoundedRectangle(cornerRadius: 16)
+            .fill(probe.mouseEnabled ? Color.blue.opacity(0.28) : Color.gray.opacity(0.15))
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .contentShape(RoundedRectangle(cornerRadius: 16))
+            .gesture(
+                DragGesture(minimumDistance: 0)
+                    .onChanged { value in
+                        probe.touchpadChanged(x: Double(value.location.x), y: Double(value.location.y))
+                    }
+                    .onEnded { _ in probe.touchpadEnded() }
+            )
+            .accessibilityLabel(L10n.string("pad.a11y"))
+            .accessibilityIdentifier("mouse-touchpad")
+            .overlay(alignment: .top) {
+                HStack(spacing: 6) {
+                    Circle()
+                        .fill(probe.mouseEnabled ? Color.green : Color.gray)
+                        .frame(width: 7, height: 7)
+                    Text(probe.inputStatus)
+                        .font(.system(size: 10))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                        .allowsHitTesting(false)
+                    Spacer(minLength: 0)
+                    Button { showSettings = true } label: {
+                        Image(systemName: "ellipsis.circle")
+                            .font(.caption)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("pad-settings")
                 }
-                .buttonStyle(.plain)
-                .accessibilityIdentifier("pad-settings")
+                .padding(.horizontal, 4)
+                .padding(.top, 1)
             }
-
-            RoundedRectangle(cornerRadius: 16)
-                .fill(probe.mouseEnabled ? Color.blue.opacity(0.28) : Color.gray.opacity(0.15))
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .contentShape(RoundedRectangle(cornerRadius: 16))
-                .gesture(
-                    DragGesture(minimumDistance: 0)
-                        .onChanged { value in
-                            probe.touchpadChanged(x: Double(value.location.x), y: Double(value.location.y))
+            .overlay(alignment: .bottom) {
+                VStack(spacing: 2) {
+                    if !probe.lastTypeStatus.isEmpty {
+                        Text(probe.lastTypeStatus)
+                            .font(.system(size: 9))
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                            .allowsHitTesting(false)
+                    }
+                    Button {
+                        if probe.keyboardBusy {
+                            probe.cancelTyping()
+                        } else if !dictationPresented {
+                            startDictation()
                         }
-                        .onEnded { _ in probe.touchpadEnded() }
-                )
-                .accessibilityLabel(L10n.string("pad.a11y"))
-                .accessibilityIdentifier("mouse-touchpad")
-
-            if !probe.lastTypeStatus.isEmpty {
-                Text(probe.lastTypeStatus)
-                    .font(.system(size: 9))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-            }
-
-            Button {
-                if probe.keyboardBusy {
-                    probe.cancelTyping()
-                } else if !dictationPresented {
-                    startDictation()
+                    } label: {
+                        Image(systemName: dictationButtonImage)
+                            .font(.title3.weight(.semibold))
+                            .frame(width: 40, height: 40)
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.white)
+                    .background(Circle().fill(probe.keyboardBusy ? Color.red : Color.orange))
+                    .disabled(dictationPresented && !probe.keyboardBusy)
+                    .accessibilityLabel(dictationButtonTitle)
+                    .accessibilityIdentifier(probe.keyboardBusy ? "dictation-cancel" : "dictation-button")
+                    .accessibilityHint(probe.keyboardBusy ? L10n.string("dictation.cancel_hint") : L10n.string("dictation.hint"))
                 }
-            } label: {
-                Image(systemName: dictationButtonImage)
-                    .font(.title3.weight(.semibold))
-                    .frame(width: 40, height: 40)
+                .padding(.bottom, 1)
             }
-            .buttonStyle(.plain)
-            .foregroundStyle(.white)
-            .background(Circle().fill(probe.keyboardBusy ? Color.red : Color.orange))
-            .disabled(dictationPresented && !probe.keyboardBusy)
-            .accessibilityLabel(dictationButtonTitle)
-            .accessibilityIdentifier(probe.keyboardBusy ? "dictation-cancel" : "dictation-button")
-            .accessibilityHint(probe.keyboardBusy ? L10n.string("dictation.cancel_hint") : L10n.string("dictation.hint"))
-        }
-        .padding(.horizontal, 4)
+            .ignoresSafeArea(edges: .bottom)
         .onAppear { probe.setInputSceneActive(scenePhase == .active) }
         .onChange(of: inputOverlayVisible) { _, blocked in probe.setInputUIBlocked(blocked) }
         .onChange(of: scenePhase) { _, phase in probe.setInputSceneActive(phase == .active) }
