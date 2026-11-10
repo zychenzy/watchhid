@@ -23,13 +23,10 @@ final class SystemTextEntryTests: XCTestCase {
         app.typeText("watch test")
         capture("02-typed-not-speech")
         done.tap()
-        XCTAssertTrue(app.staticTexts["dictation-review-title"].waitForExistence(timeout: 10))
-        XCTAssertTrue(app.staticTexts["watch test"].exists)
-        capture("03-real-completion-preview")
-        app.buttons["dictation-review-done"].tap()
         XCTAssertTrue(app.buttons["dictation-button"].waitForExistence(timeout: 10))
         XCTAssertFalse(app.staticTexts["dictation-review-title"].exists)
-        capture("04-return-after-done")
+        XCTAssertFalse(app.staticTexts["watch test"].exists)
+        capture("03-return-without-preview")
     }
 
     func testSystemCancelReturnsWithoutPreview() {
@@ -42,6 +39,6 @@ final class SystemTextEntryTests: XCTestCase {
         cancel.tap()
         XCTAssertTrue(app.buttons["dictation-button"].waitForExistence(timeout: 10))
         XCTAssertFalse(app.staticTexts["dictation-review-title"].exists)
-        capture("05-return-after-cancel")
+        capture("04-return-after-cancel")
     }
 }

@@ -32,7 +32,7 @@ struct ContentView: View {
     #if targetEnvironment(simulator)
     @State private var simulatorCheckRan = false
     #endif
-    private var inputOverlayVisible: Bool { showSettings || dictationPresented || probe.dictationPreview != nil }
+    private var inputOverlayVisible: Bool { showSettings || dictationPresented }
 
     var body: some View {
         VStack(spacing: 4) {
@@ -78,17 +78,21 @@ struct ContentView: View {
                 .accessibilityIdentifier("mouse-touchpad")
 
             Button {
-                startDictation()
+                if probe.keyboardBusy {
+                    probe.cancelTyping()
+                } else if !dictationPresented {
+                    startDictation()
+                }
             } label: {
-                Label(L10n.string("dictation.button"), systemImage: "mic.fill")
+                Label(dictationButtonTitle, systemImage: dictationButtonImage)
                     .font(.caption2.bold())
                     .frame(maxWidth: .infinity, minHeight: 28)
             }
             .buttonStyle(.borderedProminent)
-            .tint(.orange)
-            .disabled(false)
-            .accessibilityIdentifier("dictation-button")
-            .accessibilityHint(L10n.string("dictation.hint"))
+            .tint(probe.keyboardBusy ? .red : .orange)
+            .disabled(dictationPresented && !probe.keyboardBusy)
+            .accessibilityIdentifier(probe.keyboardBusy ? "dictation-cancel" : "dictation-button")
+            .accessibilityHint(probe.keyboardBusy ? L10n.string("dictation.cancel_hint") : L10n.string("dictation.hint"))
 
             if !probe.lastTypeStatus.isEmpty {
                 Text(probe.lastTypeStatus)
@@ -113,13 +117,6 @@ struct ContentView: View {
             await runSimulatorCheck()
             #endif
         }
-        .sheet(isPresented: Binding(
-            get: { probe.dictationPreview != nil },
-            set: { if !$0 { probe.clearDictationPreview() } }
-        )) {
-            DictationReviewSheet()
-                .environmentObject(probe)
-        }
         .sheet(isPresented: $showSettings) {
             PadSettingsSheet()
                 .environmentObject(probe)
@@ -137,16 +134,21 @@ struct ContentView: View {
             logStore.info("SIMULATOR ONLY: invoking real system text entry; no ASR success implied")
             startDictation()
         } else {
-            logStore.info("SIMULATOR ONLY: synthetic String preview; not speech recognition")
-            probe.presentDictationReview(text: "SIMULATOR SAMPLE — not speech")
-            if args.contains("--simulator-dismiss-preview") {
-                try? await Task.sleep(for: .seconds(3))
-                probe.clearDictationPreview()
-                logStore.info("SIMULATOR ONLY: programmatic preview dismissal; touch input not simulated")
-            }
+            logStore.info("SIMULATOR ONLY: synthetic acceptDictation; not speech recognition")
+            probe.acceptDictation("SIMULATOR SAMPLE — not speech")
         }
     }
     #endif
+
+    private var dictationButtonTitle: String {
+        if probe.keyboardBusy { return L10n.string("dictation.cancel") }
+        if dictationPresented { return L10n.string("dictation.listening") }
+        return L10n.string("dictation.button")
+    }
+
+    private var dictationButtonImage: String {
+        probe.keyboardBusy ? "xmark.circle.fill" : "mic.fill"
+    }
 
     private func startDictation() {
         guard let controller = WKApplication.shared().visibleInterfaceController else {
@@ -156,63 +158,20 @@ struct ContentView: View {
         logStore.info("Voice text entry requested; system selects initial input method")
         dictationPresented = true
         probe.setInputUIBlocked(true)
-        // System text entry returns a String; nothing is typed into the Mac automatically.
+        // Captured text is typed into the Mac when possible. The Watch does not show it.
         controller.presentTextInputController(withSuggestions: nil, allowedInputMode: .plain) { results in
             Task { @MainActor in
                 defer {
                     dictationPresented = false
-                    probe.setInputUIBlocked(showSettings || probe.dictationPreview != nil)
+                    probe.setInputUIBlocked(showSettings)
                     probe.setInputSceneActive(scenePhase == .active)
                 }
                 guard let text = results?.first as? String else {
                     LogStore.shared.info("Dictation canceled or empty")
                     return
                 }
-                PeripheralProbe.shared.presentDictationReview(text: text)
+                PeripheralProbe.shared.acceptDictation(text)
             }
-        }
-    }
-}
-
-struct DictationReviewSheet: View {
-    @EnvironmentObject private var probe: PeripheralProbe
-    @Environment(\.dismiss) private var dismiss
-
-    var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 8) {
-                Text(L10n.string("dictation.review.title")).font(.headline)
-                    .accessibilityIdentifier("dictation-review-title")
-                Text(L10n.string("dictation.review.stays_on_watch"))
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                Text(probe.dictationPreview ?? "")
-                    .font(.body)
-                HStack {
-                    Button(L10n.string("dictation.review.done")) {
-                        probe.clearDictationPreview()
-                        dismiss()
-                    }
-                    .accessibilityIdentifier("dictation-review-done")
-                    Spacer()
-                    if probe.keyboardFeatureEnabled {
-                    Button(L10n.string("dictation.review.send_english")) {
-                        if let text = probe.dictationPreview {
-                            probe.typeReviewedASCII(text)
-                        }
-                        dismiss()
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .disabled(probe.dictationPreview?.isEmpty != false)
-                    }
-                }
-                if !probe.keyboardFeatureEnabled {
-                    Text(L10n.string("dictation.review.keyboard_off_note"))
-                        .font(.caption2)
-                        .foregroundStyle(.orange)
-                }
-            }
-            .padding()
         }
     }
 }
