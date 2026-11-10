@@ -68,17 +68,25 @@ enum ATTCallbackTrace {
     }
     private static let logger = Logger(subsystem: "com.zy.watchhid.watchkitapp", category: "ATTCallback")
     private static let fileLock = NSLock()
+    /// Opt-in only. Default builds do not write GATT identifiers to unified logs or the JSONL file.
+    private static var verbose: Bool {
+        ProcessInfo.processInfo.arguments.contains("--watchhid-verbose-att")
+            || ProcessInfo.processInfo.environment["WATCHHID_VERBOSE_ATT"] == "1"
+    }
 
     static func begin(uuid: String, central: String, manager: String, offset: Int) -> Ticket {
         let ticket = Ticket(id: UUID().uuidString, wall: Date(), uptime: ProcessInfo.processInfo.systemUptime,
                             uuid: uuid, central: central, manager: manager, offset: offset,
                             mainThread: Thread.isMainThread)
-        logger.notice("ATT_ENTER id=\(ticket.id, privacy: .public) uuid=\(uuid, privacy: .public) central=\(central, privacy: .public) main=\(ticket.mainThread)")
+        if verbose {
+            logger.notice("ATT_ENTER id=\(ticket.id, privacy: .public) uuid=\(uuid, privacy: .private) central=\(central, privacy: .private) main=\(ticket.mainThread)")
+        }
         return ticket
     }
 
     static func finish(_ ticket: Ticket, result: Int, bytes: Int) {
         let end = ProcessInfo.processInfo.systemUptime
+        guard verbose else { return }
         logger.notice("ATT_RESPOND_RETURN id=\(ticket.id, privacy: .public) result=\(result) bytes=\(bytes)")
         let row: [String: Any] = [
             "event": "att_response_return", "id": ticket.id,
