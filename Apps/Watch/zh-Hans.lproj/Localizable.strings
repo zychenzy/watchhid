@@ -12,8 +12,8 @@
 "settings.title" = "设置";
 "settings.pause_input" = "暂停触控输入";
 "settings.english_keyboard" = "英文键盘 HID";
-"settings.dictation_help" = "听写：如果系统先显示键盘，请点右下角输入方式控件并选择麦克风。说完后点系统的完成。可输入的英文会打到当前聚焦的 Mac 输入框。手表不会显示听写内容。中文及其他非 ASCII 字符会被跳过。";
-"settings.keyboard_help" = "英文键盘默认开启，以便把听写打到 Mac。这会重新发布鼠标和键盘描述符，Mac 可能重新枚举设备。关闭后会恢复基准鼠标描述符。";
+"settings.dictation_help" = "听写：如果系统先显示键盘，请点右下角输入方式控件并选择麦克风。说完后点系统的完成。若已打开英文键盘 HID，可输入的英文会打到当前聚焦的 Mac 输入框。手表不会显示听写内容。中文及其他非 ASCII 字符会被跳过。";
+"settings.keyboard_help" = "英文键盘 HID 默认关闭。打开后会单独增加一个键盘服务，不会改动鼠标描述符。如果出现键盘设置助理，直接关闭即可。如果指针只能上下移动，请关掉此项。";
 "settings.cancel_keyboard" = "取消键盘发送";
 "settings.done" = "完成";
 "status.pending_release" = "正在松开按键 · 输入已暂停";

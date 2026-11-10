@@ -36,7 +36,39 @@ enum HIDDescriptors {
         0xC0,       // End Collection
     ]
 
-    /// Composite mouse (Report ID 1) + boot keyboard (Report ID 2). Opt-in; may require host rebind.
+    /// Keyboard-only map (no Report ID). Used on a separate HID service so the
+    /// accepted mouse map stays byte-identical.
+    static let keyboardReportMap: [UInt8] = [
+        0x05, 0x01, // Usage Page (Generic Desktop)
+        0x09, 0x06, // Usage (Keyboard)
+        0xA1, 0x01, // Collection (Application)
+        0x05, 0x07, //   Usage Page (Key Codes)
+        0x19, 0xE0, //   Usage Minimum (224)
+        0x29, 0xE7, //   Usage Maximum (231)
+        0x15, 0x00, //   Logical Minimum (0)
+        0x25, 0x01, //   Logical Maximum (1)
+        0x75, 0x01, //   Report Size (1)
+        0x95, 0x08, //   Report Count (8)
+        0x81, 0x02, //   Input (Data,Var,Abs) — modifiers
+        0x95, 0x01, //   Report Count (1)
+        0x75, 0x08, //   Report Size (8)
+        0x81, 0x01, //   Input (Const) — reserved
+        0x95, 0x06, //   Report Count (6)
+        0x75, 0x08, //   Report Size (8)
+        0x15, 0x00,
+        0x25, 0x65,
+        0x05, 0x07,
+        0x19, 0x00,
+        0x29, 0x65,
+        0x81, 0x00, //   Input (Data,Ary) — keycodes
+        0xC0,
+    ]
+
+    /// Composite mouse (Report ID 1) + boot keyboard (Report ID 2).
+    /// Do not use on a Mac that already bonded the no-Report-ID mouse map:
+    /// on 2026-11-10 that made pointer movement vertical-only, because the
+    /// host kept parsing the 4-byte layout and treated the Report ID prefix
+    /// as buttons and X as Y. Turning the feature off restored the baseline.
     static let mouseKeyboardReportMap: [UInt8] = [
         // Mouse — Report ID 1
         0x05, 0x01,
@@ -107,7 +139,9 @@ enum HIDDescriptors {
     /// Report Reference: Report ID, Input(1)
     static let mouseReportReference: [UInt8] = [0x00, 0x01]
     static let mouseReportReferenceWithID: [UInt8] = [0x01, 0x01]
+    /// Kept for the unused composite map only.
     static let keyboardReportReference: [UInt8] = [0x02, 0x01]
+    static let keyboardReportReferenceNoID: [UInt8] = [0x00, 0x01]
 
     enum UUID16 {
         static let hidService = "1812"
