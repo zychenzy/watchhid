@@ -13,6 +13,9 @@ final class PeripheralProbe: NSObject, ObservableObject {
     private var keyboardSubscribedCentrals = Set<UUID>()
     private var activeReport: NSObject?
     private var activeKeyboardReport: NSObject?
+    /// Identity for the separate keyboard HID service (not the composite mouse map).
+    private nonisolated(unsafe) var keyboardHIDServiceObject: AnyObject?
+    private nonisolated(unsafe) var keyboardReportObject: AnyObject?
     @Published private(set) var mouseEnabled = false
     @Published private(set) var mouseTouching = false
     @Published private(set) var inputStatus = L10n.string("status.waiting_subscription")
@@ -55,11 +58,10 @@ final class PeripheralProbe: NSObject, ObservableObject {
         #else
         experimentOverride = "standard128"
         #endif
-        // Keyboard is on by default so dictation can type into the Mac.
-        // This uses the composite Report Map; the Mac may re-enumerate. The
-        // Settings toggle still restores the baseline mouse map.
-        mouse.usesReportID = keyboardFeatureEnabled
-        keyboard.usesReportID = true
+        // Keep the accepted no-Report-ID mouse map unchanged. Keyboard, when
+        // enabled, is a separate HID service with its own keyboard-only map.
+        mouse.usesReportID = false
+        keyboard.usesReportID = false
         keyboardFeatureFlag = keyboardFeatureEnabled
         log.info("prepareMacTouchpad case=\(experiment) keyboardFeature=\(keyboardFeatureEnabled) usesReportID=\(mouse.usesReportID)")
         start()
@@ -89,22 +91,22 @@ final class PeripheralProbe: NSObject, ObservableObject {
         refreshInputGate()
     }
 
-    /// Missing key means on: dictation should type into the Mac. An explicit off is kept.
+    /// Missing key means off: the composite mouse+keyboard map broke vertical/horizontal
+    /// movement on an already bonded Mac. An explicit on is kept.
     nonisolated private static func storedKeyboardFeatureEnabled() -> Bool {
-        if UserDefaults.standard.object(forKey: "wh.keyboardFeature") == nil {
-            return true
-        }
-        return UserDefaults.standard.bool(forKey: "wh.keyboardFeature")
+        UserDefaults.standard.bool(forKey: "wh.keyboardFeature")
     }
 
-    /// Keyboard composite changes Report Map; republish only when toggled.
+    /// Adding or removing the keyboard HID service republishes GATT, but the
+    /// mouse Report Map stays the accepted no-Report-ID baseline.
     func setKeyboardFeatureEnabled(_ enabled: Bool) {
         guard enabled != keyboardFeatureEnabled else { return }
         keyboardFeatureEnabled = enabled
         keyboardFeatureFlag = enabled
         UserDefaults.standard.set(enabled, forKey: "wh.keyboardFeature")
-        mouse.usesReportID = enabled
-        log.info("Keyboard feature \(enabled ? "ON" : "OFF"); republishing HID (mouse map \(enabled ? "composite" : "baseline"))")
+        mouse.usesReportID = false
+        keyboard.usesReportID = false
+        log.info("Keyboard feature \(enabled ? "ON" : "OFF"); republishing services (mouse map unchanged)")
         let wasRunning = isRunning
         if wasRunning { stop() }
         if wasRunning { prepareMacTouchpad() }
@@ -494,6 +496,8 @@ final class PeripheralProbe: NSObject, ObservableObject {
         reportSubscriberCount = 0
         activeReport = nil
         activeKeyboardReport = nil
+        keyboardHIDServiceObject = nil
+        keyboardReportObject = nil
         keyboardSubscribedCentrals.removeAll()
         statusSummary = "Stopped"
         refreshInputGate()
@@ -520,19 +524,21 @@ final class PeripheralProbe: NSObject, ObservableObject {
 
 
 
-    private func isKeyboardReportCharacteristic(_ characteristic: CBCharacteristic) -> Bool {
-        guard keyboardFeatureEnabled else { return false }
-        if let descriptors = characteristic.descriptors {
-            for descriptor in descriptors where descriptor.uuid == CBUUID(string: HIDDescriptors.UUID16.reportReference) {
-                if let value = descriptor.value as? Data, value.count >= 1, value[0] == HIDDescriptors.keyboardReportID {
-                    return true
-                }
-            }
+    nonisolated private func isKeyboardReportCharacteristic(_ characteristic: CBCharacteristic) -> Bool {
+        if let stored = keyboardReportObject, characteristic as AnyObject === stored {
+            return true
         }
-        if let active = activeReport, characteristic as AnyObject !== active as AnyObject {
+        if let service = characteristic.service, let stored = keyboardHIDServiceObject, service as AnyObject === stored {
             return true
         }
         return false
+    }
+
+    nonisolated private func isKeyboardHIDCharacteristic(_ characteristic: CBCharacteristic) -> Bool {
+        if let service = characteristic.service, let stored = keyboardHIDServiceObject, service as AnyObject === stored {
+            return true
+        }
+        return isKeyboardReportCharacteristic(characteristic)
     }
 
     private func createViaDynamicFactory() {
@@ -657,7 +663,15 @@ final class PeripheralProbe: NSObject, ObservableObject {
             return
         }
 
-        pendingServiceObjects = [hid, battery, info]
+        keyboardHIDServiceObject = nil
+        keyboardReportObject = nil
+        pendingServiceObjects = [hid]
+        if keyboardFeatureEnabled, let keyboardHID = buildKeyboardHIDService(uuidOverride: expanded ? "00001812-0000-1000-8000-00805F9B34FB" : nil) {
+            keyboardHIDServiceObject = keyboardHID
+            pendingServiceObjects.append(keyboardHID)
+            log.info("Adding separate keyboard HID service; mouse Report Map unchanged")
+        }
+        pendingServiceObjects.append(contentsOf: [battery, info])
         expectedServiceCount = pendingServiceObjects.count
         addedServiceCount = 0
 
@@ -693,7 +707,7 @@ final class PeripheralProbe: NSObject, ObservableObject {
         let reportMap = WHCreateMutableCharacteristic(
             hogpUUID(short: HIDDescriptors.UUID16.reportMap, full: HIDDescriptors.UUID128.reportMap),
             propRead,
-            dynamicValues ? nil : HIDMetadata.value(for: "2A4B", keyboardEnabled: keyboardFeatureEnabled),
+            dynamicValues ? nil : HIDMetadata.value(for: "2A4B"),
             secureHID ? 0x04 : permReadable
         )
         let report = WHCreateMutableCharacteristic(
@@ -703,29 +717,11 @@ final class PeripheralProbe: NSObject, ObservableObject {
             secureHID ? 0x04 : permReadable
         ) as? NSObject
         if let report {
-            let refBytes = Data(keyboardFeatureEnabled ? HIDDescriptors.mouseReportReferenceWithID : HIDDescriptors.mouseReportReference)
             if let reportRef = WHCreateMutableDescriptor(
                 hogpUUID(short: HIDDescriptors.UUID16.reportReference, full: HIDDescriptors.UUID128.reportReference),
-                refBytes
+                Data(HIDDescriptors.mouseReportReference)
             ) {
                 WHSetDescriptors(report, [reportRef])
-            }
-        }
-        var keyboardReport: NSObject?
-        if keyboardFeatureEnabled {
-            keyboardReport = WHCreateMutableCharacteristic(
-                hogpUUID(short: HIDDescriptors.UUID16.report, full: HIDDescriptors.UUID128.report),
-                propRead | propNotify | (secureHID ? 0x100 : 0),
-                nil,
-                secureHID ? 0x04 : permReadable
-            ) as? NSObject
-            if let keyboardReport {
-                if let reportRef = WHCreateMutableDescriptor(
-                    hogpUUID(short: HIDDescriptors.UUID16.reportReference, full: HIDDescriptors.UUID128.reportReference),
-                    Data(HIDDescriptors.keyboardReportReference)
-                ) {
-                    WHSetDescriptors(keyboardReport, [reportRef])
-                }
             }
         }
         let hidInfo = WHCreateMutableCharacteristic(
@@ -756,9 +752,54 @@ final class PeripheralProbe: NSObject, ObservableObject {
             chars.append(contentsOf: [reportMap, report].compactMap { $0 })
         } else {
             chars.append(contentsOf: [protocolMode, reportMap, report, hidInfo, controlPoint].compactMap { $0 })
-            if let keyboardReport { chars.append(keyboardReport) }
         }
         WHSetCharacteristics(service, chars)
+        return service
+    }
+
+    /// Separate HOGP service for the boot keyboard. Does not change the mouse Report Map.
+    private func buildKeyboardHIDService(uuidOverride: String? = nil) -> NSObject? {
+        guard let service = WHCreateMutableService(uuidOverride ?? HIDDescriptors.UUID16.hidService, true) as? NSObject else { return nil }
+        let protocolMode = WHCreateMutableCharacteristic(
+            hogpUUID(short: HIDDescriptors.UUID16.protocolMode, full: HIDDescriptors.UUID128.protocolMode),
+            propRead | propWriteWithoutResponse,
+            nil,
+            secureHID ? (0x04 | 0x08) : (permReadable | permWriteable)
+        )
+        let reportMap = WHCreateMutableCharacteristic(
+            hogpUUID(short: HIDDescriptors.UUID16.reportMap, full: HIDDescriptors.UUID128.reportMap),
+            propRead,
+            dynamicValues ? nil : HIDMetadata.value(for: "2A4B", keyboardEnabled: true),
+            secureHID ? 0x04 : permReadable
+        )
+        let report = WHCreateMutableCharacteristic(
+            hogpUUID(short: HIDDescriptors.UUID16.report, full: HIDDescriptors.UUID128.report),
+            propRead | propNotify | (secureHID ? 0x100 : 0),
+            nil,
+            secureHID ? 0x04 : permReadable
+        ) as? NSObject
+        if let report {
+            if let reportRef = WHCreateMutableDescriptor(
+                hogpUUID(short: HIDDescriptors.UUID16.reportReference, full: HIDDescriptors.UUID128.reportReference),
+                Data(HIDDescriptors.keyboardReportReferenceNoID)
+            ) {
+                WHSetDescriptors(report, [reportRef])
+            }
+            keyboardReportObject = report
+        }
+        let hidInfo = WHCreateMutableCharacteristic(
+            hogpUUID(short: HIDDescriptors.UUID16.hidInformation, full: HIDDescriptors.UUID128.hidInformation),
+            propRead,
+            dynamicValues ? nil : HIDMetadata.value(for: "2A4A"),
+            secureHID ? 0x04 : permReadable
+        )
+        let controlPoint = WHCreateMutableCharacteristic(
+            hogpUUID(short: HIDDescriptors.UUID16.hidControlPoint, full: HIDDescriptors.UUID128.hidControlPoint),
+            propWriteWithoutResponse,
+            nil,
+            secureHID ? 0x08 : permWriteable
+        )
+        WHSetCharacteristics(service, [protocolMode, reportMap, report, hidInfo, controlPoint].compactMap { $0 })
         return service
     }
 
@@ -836,7 +877,7 @@ extension PeripheralProbe: CBPeripheralManagerDelegate {
         if uuid == CBUUID(string: HIDDescriptors.UUID16.protocolMode) {
             value = Data([1])
         } else if uuid == CBUUID(string: HIDDescriptors.UUID16.reportMap) {
-            value = Data(keyboardFeatureFlag ? HIDDescriptors.mouseKeyboardReportMap : HIDDescriptors.mouseReportMap)
+            value = Data(isKeyboardHIDCharacteristic(request.characteristic) ? HIDDescriptors.keyboardReportMap : HIDDescriptors.mouseReportMap)
         } else if uuid == CBUUID(string: HIDDescriptors.UUID16.hidInformation) {
             value = Data(HIDDescriptors.hidInformation)
         } else if uuid == CBUUID(string: HIDDescriptors.UUID16.manufacturerName) {
@@ -852,7 +893,9 @@ extension PeripheralProbe: CBPeripheralManagerDelegate {
             value = Data([1])
         } else if uuid == CBUUID(string: HIDDescriptors.UUID16.report)
                     || uuid == CBUUID(string: HIDDescriptors.UUID128.report) {
-            value = Data([0, 0, 0, 0])
+            value = isKeyboardHIDCharacteristic(request.characteristic)
+                ? Data([0, 0, 0, 0, 0, 0, 0, 0])
+                : Data([0, 0, 0, 0])
         } else if uuid == CBUUID(string: HIDDescriptors.UUID16.bootMouseInputReport)
                     || uuid == CBUUID(string: HIDDescriptors.UUID128.bootMouseInputReport) {
             value = Data([0, 0, 0]) // USB HID boot mouse: buttons, X, Y

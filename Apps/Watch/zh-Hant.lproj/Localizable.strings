@@ -12,8 +12,8 @@
 "settings.title" = "設定";
 "settings.pause_input" = "暫停觸控輸入";
 "settings.english_keyboard" = "英文鍵盤 HID";
-"settings.dictation_help" = "聽寫：如果系統先顯示鍵盤，請點右下角輸入方式控制並選擇麥克風。說完後點系統的完成。可輸入的英文會打到目前焦點的 Mac 輸入框。手錶不會顯示聽寫內容。中文及其他非 ASCII 字元會被跳過。";
-"settings.keyboard_help" = "英文鍵盤預設開啟，以便把聽寫打到 Mac。這會重新發布滑鼠和鍵盤描述符，Mac 可能重新列舉裝置。關閉後會恢復基準滑鼠描述符。";
+"settings.dictation_help" = "聽寫：如果系統先顯示鍵盤，請點右下角輸入方式控制並選擇麥克風。說完後點系統的完成。若已打開英文鍵盤 HID，可輸入的英文會打到目前焦點的 Mac 輸入框。手錶不會顯示聽寫內容。中文及其他非 ASCII 字元會被跳過。";
+"settings.keyboard_help" = "英文鍵盤 HID 預設關閉。打開後會單獨增加一個鍵盤服務，不會改動滑鼠描述符。如果出現鍵盤設定助理，直接關閉即可。如果指標只能上下移動，請關掉此項。";
 "settings.cancel_keyboard" = "取消鍵盤傳送";
 "settings.done" = "完成";
 "status.pending_release" = "正在鬆開按鍵 · 輸入已暫停";

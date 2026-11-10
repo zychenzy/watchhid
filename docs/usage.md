@@ -36,12 +36,14 @@ The bottom button is labeled Dictation (`语音听写` in Chinese). It presents 
 
 The system input method and recognition language are controlled by watchOS. There is no guarantee that the microphone opens directly every time, or that watchOS remembers the last choice.
 
-English HID typing into the Mac is on by default. Turning it on republishes a composite mouse and keyboard descriptor, and the Mac may re-enumerate the HID device. Only US-ASCII is mapped; Chinese and other non-ASCII characters are skipped. This is not a way to type Chinese into the Mac. You can turn the keyboard off in Settings to restore the baseline mouse map. If a Bluetooth prompt appears after install, confirm it in the system dialog. Do not reset Bluetooth or unpair the system Apple Watch.
+English HID typing into the Mac is **off** by default. A composite mouse-and-keyboard Report Map (Report IDs) must not be used on a Mac that already bonded the no-Report-ID mouse map: on 2026-11-10 that made pointer movement vertical-only. Turning the keyboard off restored the baseline map and the pointer. The current Settings toggle adds a separate keyboard HID service and leaves the mouse Report Map unchanged.
+
+Only US-ASCII is mapped; Chinese and other non-ASCII characters are skipped. This is not a way to type Chinese into the Mac. If a Keyboard Setup Assistant appears, close it; do not reset Bluetooth or unpair the system Apple Watch. If the pointer ever goes wrong again, turn English keyboard HID off in Settings.
 
 ## What is already confirmed, and what is not
 
 Confirmed on more than one Mac: Watch BLE HID reports can move the system pointer; a short drag and tap work; USB unplug of the iPhone does not stop an already working mouse; same-node identity `WatchHID` / `Ultra2-R1`; system dictation can capture text on the Watch.
 
-Not fully confirmed: typing dictation into a Mac text field (English HID, now on by default); a working mouse while no iPhone is nearby on Wi-Fi (wireless isolation); every reconnect and restart combination after the composite keyboard map is published.
+Not fully confirmed: typing dictation into a Mac text field through a separate keyboard HID service; a working mouse while no iPhone is nearby on Wi-Fi (wireless isolation); every reconnect and restart combination.
 
 Simulator checks cover UI and the system text-input callback only. They do not prove BLE HOGP, cursor movement, or speech recognition. See [SIMULATOR-CHECKS.md](SIMULATOR-CHECKS.md).

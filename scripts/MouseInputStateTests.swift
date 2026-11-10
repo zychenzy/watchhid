@@ -74,6 +74,14 @@ func runKeyboardTests() {
     check(kb.skippedUnsupported >= 1, "skipped non-ascii")
     let down = kb.step(at: 0)
     check(down == Data([2, 0x02, 0, 0x04, 0, 0, 0, 0, 0]), "A down with report id")
+    kb = KeyboardInputState()
+    kb.usesReportID = false
+    check(kb.availability(active: true, macReady: true) == nil, "kb no-id avail")
+    check(kb.arm(), "kb no-id arm")
+    check(kb.enqueueASCII("A"), "enqueue no-id")
+    let downNoID = kb.step(at: 0)
+    check(downNoID == Data([0x02, 0, 0x04, 0, 0, 0, 0, 0]), "A down without report id")
+    _ = kb.cancel()
     let up = kb.step(at: 0.05)
     check(up == Data([2, 0, 0, 0, 0, 0, 0, 0, 0]), "key up")
     _ = kb.step(at: 0.1)
@@ -84,7 +92,7 @@ func runKeyboardTests() {
 func runLifecycleAndMetadataTests() {
     for keyboard in [false, true] {
         let map = HIDMetadata.value(for: "2A4B", keyboardEnabled: keyboard)
-        check(map == Data(keyboard ? HIDDescriptors.mouseKeyboardReportMap : HIDDescriptors.mouseReportMap), "cached map matches report mode")
+        check(map == Data(keyboard ? HIDDescriptors.keyboardReportMap : HIDDescriptors.mouseReportMap), "cached map matches report mode")
         check(HIDMetadata.value(for: "2A4A") == Data([0x11, 0x01, 0, 2]), "cached HID Information")
         for uuid in ["2A29", "2A24", "2A50"] {
             check(HIDMetadata.value(for: uuid)?.isEmpty == false, "immutable metadata remains readable without callback: \(uuid)")

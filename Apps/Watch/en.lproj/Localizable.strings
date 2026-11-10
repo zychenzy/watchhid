@@ -12,8 +12,8 @@
 "settings.title" = "Settings";
 "settings.pause_input" = "Pause touch input";
 "settings.english_keyboard" = "English keyboard HID";
-"settings.dictation_help" = "Dictation: if the system shows a keyboard first, use the input control at the lower right and choose the microphone. After you speak, tap the system Done button. Typable English is sent to the focused Mac field. The Watch does not show the captured text. Chinese and other non-ASCII characters are skipped.";
-"settings.keyboard_help" = "The English keyboard is on by default so dictation can type into the Mac. This republishes a mouse and keyboard descriptor, and the Mac may re-enumerate the device. Turning it off restores the baseline mouse map.";
+"settings.dictation_help" = "Dictation: if the system shows a keyboard first, use the input control at the lower right and choose the microphone. After you speak, tap the system Done button. If English keyboard HID is on, typable English is sent to the focused Mac field. The Watch does not show the captured text. Chinese and other non-ASCII characters are skipped.";
+"settings.keyboard_help" = "English keyboard HID is off by default. Turning it on adds a separate keyboard service and does not change the mouse descriptor. If Keyboard Setup Assistant appears, close it. If the pointer only moves up and down, turn this off.";
 "settings.cancel_keyboard" = "Cancel keyboard send";
 "settings.done" = "Done";
 "status.pending_release" = "Releasing buttons · input paused";
