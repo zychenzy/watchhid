@@ -17,6 +17,8 @@
 - 重装或失活时仍可能出现 ATT242，导致 Mac 尚未重新创建鼠标节点。若指针不动，先退出并手动重新打开 WatchHID；若仍失败，保留现场日志供排查。**不要为了试用取消配对、清蓝牙缓存或重置系统蓝牙。**
 - 手表离开 Mac 范围后，远程开发连接不可用是正常的，不代表 USB 运行独立性失效。
 
+新 Mac 上要先具备完整 Xcode 和手表开发连接，才能安装这些已签名包；系统登录账号可以和 Xcode 签名用的 Apple ID 不同。详见 [SETUP.zh-CN.md](SETUP.zh-CN.md)。
+
 ## 本地包与回滚
 Mac mini：`~/projects/watchhid/build/diagnostics/recovery-root/`
 - `WatchHID-return-home-candidate.zip`：整理后的可装候选，源码8db3f5d；新增测试入口仅编译到模拟器，未重新装到离家的手表。

@@ -4,6 +4,8 @@ Human-readable experiment notes only. **Do not commit** raw `build/diagnostics/*
 
 | Doc | Topic |
 |---|---|
+| [SETUP.zh-CN.md](SETUP.zh-CN.md) | 新 Mac：官方 Xcode 版本、安装与 first launch、免费账号签名、开发配对；已签名包装入 vs 本机构建 |
+| [QUICKSTART.zh-CN.md](QUICKSTART.zh-CN.md) | 回来后真机试用与听写边界 |
 | [mac-touchpad-mvp.md](mac-touchpad-mvp.md) | Mac BLE touchpad MVP install + owner-acceptance boundary |
 | [r5-att242-causal-audit.md](r5-att242-causal-audit.md) | ATT242 causal audit; callback observation vs availability |
 | [r5-client-audit.md](r5-client-audit.md) | iPhone client audit notes |
