@@ -105,6 +105,11 @@ func runKeyboardTests() {
     check(kb.skippedUnsupported >= 1, "skipped non-ascii")
     let down = kb.step(at: 0)
     check(down == Data([2, 0x02, 0, 0x04, 0, 0, 0, 0, 0]), "A down with report id")
+    let naturalUp = kb.step(at: 0.05)
+    check(naturalUp == Data([2, 0, 0, 0, 0, 0, 0, 0, 0]), "natural key up with report id")
+    // "A!你" still has "!" queued; cancel drops it. current is already nil after the up.
+    check(kb.cancel() == nil, "cancel after key-up, with leftover queue, emits no extra release")
+
     kb = KeyboardInputState()
     kb.usesReportID = false
     check(kb.availability(active: true, macReady: true) == nil, "kb no-id avail")
@@ -112,12 +117,10 @@ func runKeyboardTests() {
     check(kb.enqueueASCII("A"), "enqueue no-id")
     let downNoID = kb.step(at: 0)
     check(downNoID == Data([0x02, 0, 0x04, 0, 0, 0, 0, 0]), "A down without report id")
-    _ = kb.cancel()
-    let up = kb.step(at: 0.05)
-    check(up == Data([2, 0, 0, 0, 0, 0, 0, 0, 0]), "key up")
-    _ = kb.step(at: 0.1)
-    _ = kb.step(at: 0.15)
-    check(kb.cancel() == nil, "cancel after complete key-up emits no unsolicited release")
+    let cancelled = kb.cancel()
+    check(cancelled == Data([0, 0, 0, 0, 0, 0, 0, 0]), "cancel while key is down emits no-id key up")
+    check(kb.step(at: 0.05) == nil, "step after cancel does not emit another report")
+    check(kb.cancel() == nil, "second cancel after release emits no unsolicited release")
 }
 
 func runLifecycleAndMetadataTests() {
