@@ -35,75 +35,80 @@ struct ContentView: View {
     private var inputOverlayVisible: Bool { showSettings || dictationPresented }
 
     var body: some View {
-        Rectangle()
-            .fill(probe.mouseEnabled
-                  ? Color(red: 0.05, green: 0.11, blue: 0.24)
-                  : Color(red: 0.08, green: 0.08, blue: 0.10))
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .contentShape(Rectangle())
-            .gesture(
-                DragGesture(minimumDistance: 0)
-                    .onChanged { value in
-                        probe.touchpadChanged(x: Double(value.location.x), y: Double(value.location.y))
-                    }
-                    .onEnded { _ in probe.touchpadEnded() }
-            )
-            .accessibilityLabel(L10n.string("pad.a11y"))
-            .accessibilityIdentifier("mouse-touchpad")
-            .overlay(alignment: .top) {
+        ZStack {
+            Rectangle()
+                .fill(probe.mouseEnabled
+                      ? Color(red: 0.01, green: 0.025, blue: 0.07)
+                      : Color(red: 0.03, green: 0.03, blue: 0.035))
+                .contentShape(Rectangle())
+                .gesture(
+                    DragGesture(minimumDistance: 0)
+                        .onChanged { value in
+                            probe.touchpadChanged(x: Double(value.location.x), y: Double(value.location.y))
+                        }
+                        .onEnded { _ in probe.touchpadEnded() }
+                )
+                .accessibilityLabel(L10n.string("pad.a11y"))
+                .accessibilityIdentifier("mouse-touchpad")
+
+            VStack(spacing: 0) {
                 HStack(spacing: 6) {
                     Circle()
                         .fill(probe.mouseEnabled ? Color.green : Color.gray)
                         .frame(width: 7, height: 7)
                     Text(probe.inputStatus)
-                        .font(.system(size: 10))
+                        .font(.system(size: 11, weight: .medium))
                         .foregroundStyle(.white.opacity(0.9))
                         .lineLimit(1)
-                        .minimumScaleFactor(0.7)
                         .allowsHitTesting(false)
                     Spacer(minLength: 0)
                     Button { showSettings = true } label: {
                         Image(systemName: "ellipsis.circle")
                             .font(.caption)
                             .foregroundStyle(.white)
+                            .frame(width: 28, height: 28)
+                            .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
                     .accessibilityIdentifier("pad-settings")
                 }
                 .padding(.horizontal, 6)
                 .padding(.top, 16)
-            }
-            .overlay(alignment: .bottom) {
-                VStack(spacing: 2) {
-                    if !probe.lastTypeStatus.isEmpty {
-                        Text(probe.lastTypeStatus)
-                            .font(.system(size: 9))
-                            .foregroundStyle(.white.opacity(0.7))
-                            .lineLimit(1)
-                            .allowsHitTesting(false)
-                    }
-                    Button {
-                        if probe.keyboardBusy {
-                            probe.cancelTyping()
-                        } else if !dictationPresented {
-                            startDictation()
-                        }
-                    } label: {
-                        Image(systemName: dictationButtonImage)
-                            .font(.title3.weight(.semibold))
-                            .frame(width: 40, height: 40)
-                    }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(.white)
-                    .background(Circle().fill(probe.keyboardBusy ? Color.red : Color.orange))
-                    .disabled(dictationPresented && !probe.keyboardBusy)
-                    .accessibilityLabel(dictationButtonTitle)
-                    .accessibilityIdentifier(probe.keyboardBusy ? "dictation-cancel" : "dictation-button")
-                    .accessibilityHint(probe.keyboardBusy ? L10n.string("dictation.cancel_hint") : L10n.string("dictation.hint"))
+
+                Spacer(minLength: 0)
+                    .allowsHitTesting(false)
+
+                if !probe.lastTypeStatus.isEmpty {
+                    Text(probe.lastTypeStatus)
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundStyle(.white.opacity(0.75))
+                        .lineLimit(1)
+                        .padding(.bottom, 4)
+                        .allowsHitTesting(false)
                 }
+
+                Button(action: {}) {
+                    Image(systemName: dictationButtonImage)
+                        .font(.title3.weight(.semibold))
+                        .foregroundStyle(.white)
+                        .frame(width: 44, height: 44)
+                        .background(Circle().fill(probe.keyboardBusy ? Color.red : Color.orange))
+                }
+                .buttonStyle(.plain)
+                .contentShape(Circle())
+                // The full-screen pad uses a zero-distance drag, which otherwise
+                // wins the touch and turns a mic tap into a mouse click.
+                // Handle the press only here so it does not fire twice.
+                .highPriorityGesture(TapGesture().onEnded { handleDictationTap() })
+                .disabled(dictationPresented && !probe.keyboardBusy)
+                .accessibilityLabel(dictationButtonTitle)
+                .accessibilityIdentifier(probe.keyboardBusy ? "dictation-cancel" : "dictation-button")
+                .accessibilityHint(probe.keyboardBusy ? L10n.string("dictation.cancel_hint") : L10n.string("dictation.hint"))
                 .padding(.bottom, 2)
             }
-            .ignoresSafeArea()
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .ignoresSafeArea()
         .onAppear { probe.setInputSceneActive(scenePhase == .active) }
         .onChange(of: inputOverlayVisible) { _, blocked in probe.setInputUIBlocked(blocked) }
         .onChange(of: scenePhase) { _, phase in probe.setInputSceneActive(phase == .active) }
@@ -167,6 +172,14 @@ struct ContentView: View {
         }
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         return trimmed.isEmpty ? nil : trimmed
+    }
+
+    private func handleDictationTap() {
+        if probe.keyboardBusy {
+            probe.cancelTyping()
+        } else if !dictationPresented {
+            startDictation()
+        }
     }
 
     private func startDictation() {
