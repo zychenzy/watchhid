@@ -3,6 +3,19 @@ import CoreBluetooth
 import WatchKit
 import Combine
 
+enum HIDHostKind: String, Equatable {
+    case mac
+    case iPhone
+    case unknown
+}
+
+struct HIDHostInfo: Identifiable, Equatable {
+    let id: UUID
+    let kind: HIDHostKind
+    let title: String
+    let isSelected: Bool
+}
+
 @MainActor
 final class PeripheralProbe: NSObject, ObservableObject {
     static let shared = PeripheralProbe()
@@ -11,6 +24,12 @@ final class PeripheralProbe: NSObject, ObservableObject {
     @Published var reportSubscriberCount = 0
     private var subscribedCentrals = Set<UUID>()
     private var keyboardSubscribedCentrals = Set<UUID>()
+    private var mouseCentrals: [UUID: CBCentral] = [:]
+    private var keyboardCentrals: [UUID: CBCentral] = [:]
+    @Published private(set) var hidHosts: [HIDHostInfo] = []
+    @Published private(set) var outputIsAutomatic = PeripheralProbe.loadSelectedOutputHostID() == nil
+    private var selectedOutputHostID: UUID? = PeripheralProbe.loadSelectedOutputHostID()
+    private var hostKindOverrides: [UUID: HIDHostKind] = PeripheralProbe.loadHostKindOverrides()
     private var activeReport: NSObject?
     private var activeKeyboardReport: NSObject?
     /// Identity for the separate keyboard HID service (not the composite mouse map).
@@ -109,6 +128,132 @@ final class PeripheralProbe: NSObject, ObservableObject {
     /// movement on an already bonded Mac. An explicit on is kept.
     nonisolated private static func storedKeyboardFeatureEnabled() -> Bool {
         UserDefaults.standard.bool(forKey: "wh.keyboardFeature")
+    }
+
+    nonisolated private static func loadSelectedOutputHostID() -> UUID? {
+        guard let raw = UserDefaults.standard.string(forKey: "wh.outputHostID"), !raw.isEmpty, raw != "auto" else {
+            return nil
+        }
+        return UUID(uuidString: raw)
+    }
+
+    nonisolated private static func loadHostKindOverrides() -> [UUID: HIDHostKind] {
+        guard let dict = UserDefaults.standard.dictionary(forKey: "wh.hostKinds") as? [String: String] else {
+            return [:]
+        }
+        var out: [UUID: HIDHostKind] = [:]
+        for (key, value) in dict {
+            if let id = UUID(uuidString: key), let kind = HIDHostKind(rawValue: value) {
+                out[id] = kind
+            }
+        }
+        return out
+    }
+
+    func selectOutputHost(_ id: UUID?) {
+        selectedOutputHostID = id
+        outputIsAutomatic = (id == nil)
+        if let id {
+            UserDefaults.standard.set(id.uuidString, forKey: "wh.outputHostID")
+        } else {
+            UserDefaults.standard.removeObject(forKey: "wh.outputHostID")
+        }
+        refreshHIDHosts()
+        let mode = id == nil ? "automatic" : "manual"
+        log.info("HID output selection " + mode + " hosts=\(hidHosts.count)")
+    }
+
+    func labelHost(_ id: UUID, kind: HIDHostKind) {
+        hostKindOverrides[id] = kind
+        var stored: [String: String] = [:]
+        for (hostID, hostKind) in hostKindOverrides {
+            stored[hostID.uuidString] = hostKind.rawValue
+        }
+        UserDefaults.standard.set(stored, forKey: "wh.hostKinds")
+        refreshHIDHosts()
+        log.info("HID host labeled kind=\(kind.rawValue)")
+    }
+
+    private func knownCentrals() -> [CBCentral] {
+        var map = keyboardCentrals
+        for (id, central) in mouseCentrals {
+            map[id] = central
+        }
+        return map.values.sorted { lhs, rhs in
+            if lhs.maximumUpdateValueLength != rhs.maximumUpdateValueLength {
+                return lhs.maximumUpdateValueLength > rhs.maximumUpdateValueLength
+            }
+            return lhs.identifier.uuidString < rhs.identifier.uuidString
+        }
+    }
+
+    private func kind(for central: CBCentral, among: [CBCentral]) -> HIDHostKind {
+        if let override = hostKindOverrides[central.identifier] {
+            return override
+        }
+        guard among.count >= 2 else { return .unknown }
+        let lengths = among.map { $0.maximumUpdateValueLength }
+        guard let maxMTU = lengths.max(), let minMTU = lengths.min(), maxMTU > minMTU else {
+            return .unknown
+        }
+        if central.maximumUpdateValueLength == maxMTU { return .mac }
+        if central.maximumUpdateValueLength == minMTU { return .iPhone }
+        return .unknown
+    }
+
+    private func title(for kind: HIDHostKind, unknownIndex: Int) -> String {
+        switch kind {
+        case .mac:
+            return L10n.string("settings.output_mac")
+        case .iPhone:
+            return L10n.string("settings.output_iphone")
+        case .unknown:
+            return L10n.string("settings.output_device", unknownIndex)
+        }
+    }
+
+    private func preferredCentral(in map: [UUID: CBCentral]) -> CBCentral? {
+        if map.isEmpty { return nil }
+        if map.count == 1 { return map.values.first }
+        if let id = selectedOutputHostID, let central = map[id] {
+            return central
+        }
+        let all = Array(map.values)
+        if let mac = all.first(where: { kind(for: $0, among: all) == .mac }) {
+            return mac
+        }
+        return all.max { lhs, rhs in
+            if lhs.maximumUpdateValueLength != rhs.maximumUpdateValueLength {
+                return lhs.maximumUpdateValueLength < rhs.maximumUpdateValueLength
+            }
+            return lhs.identifier.uuidString > rhs.identifier.uuidString
+        }
+    }
+
+    private func preferredCentrals(from map: [UUID: CBCentral]) -> [CBCentral] {
+        if let central = preferredCentral(in: map) { return [central] }
+        return []
+    }
+
+    private func refreshHIDHosts() {
+        outputIsAutomatic = (selectedOutputHostID == nil)
+        let centrals = knownCentrals()
+        let preferred = preferredCentral(in: Dictionary(uniqueKeysWithValues: centrals.map { ($0.identifier, $0) }))
+        var unknownIndex = 1
+        hidHosts = centrals.map { central in
+            let hostKind = kind(for: central, among: centrals)
+            let label: String
+            if hostKind == .unknown {
+                label = title(for: hostKind, unknownIndex: unknownIndex)
+                unknownIndex += 1
+            } else {
+                label = title(for: hostKind, unknownIndex: 0)
+            }
+            let selected = selectedOutputHostID == nil
+                ? preferred?.identifier == central.identifier
+                : selectedOutputHostID == central.identifier
+            return HIDHostInfo(id: central.identifier, kind: hostKind, title: label, isSelected: selected)
+        }
     }
 
     /// The keyboard HID service is added only after the mouse Report is
@@ -271,17 +416,22 @@ final class PeripheralProbe: NSObject, ObservableObject {
     private func submitMouseReport(_ data: Data) -> Bool {
         guard let peripheral = dynamicPeripheral, let report = activeReport,
               !subscribedCentrals.isEmpty else {
-            log.warn("Mouse notify skipped ready=\(macInputReady) activeReport=\(activeReport != nil) subs=\(subscribedCentrals.count) bytes=\(data.count)")
+            log.warn("Mouse notify skipped ready=" + String(macInputReady) + " subs=\(subscribedCentrals.count) bytes=\(data.count)")
             return false
         }
-        let ok = WHUpdateReport(peripheral, data, report)
+        let targets = preferredCentrals(from: mouseCentrals)
+        guard !targets.isEmpty else {
+            log.warn("Mouse notify skipped; no preferred host subs=\(subscribedCentrals.count)")
+            return false
+        }
+        let ok = WHUpdateReportToCentrals(peripheral, data, report, targets as [Any])
         let interesting = data.count >= 4 && (data[data.count - 4] != 0 || data[data.count - 3] != 0 || data[data.count - 2] != 0)
         let now = ProcessInfo.processInfo.systemUptime
         if !ok {
-            log.warn("Mouse notify REJECTED bytes=\(data.count)")
+            log.warn("Mouse notify REJECTED bytes=\(data.count) targets=\(targets.count)")
         } else if interesting && now - lastMouseNotifyLog >= 1.0 {
             lastMouseNotifyLog = now
-            log.info("Mouse notify accepted bytes=\(data.count) b0=\(data[0])")
+            log.info("Mouse notify accepted bytes=\(data.count) b0=\(data[0]) targets=\(targets.count)")
         }
         return ok
     }
@@ -290,7 +440,9 @@ final class PeripheralProbe: NSObject, ObservableObject {
         guard keyboardFeatureEnabled,
               let peripheral = dynamicPeripheral, let report = activeKeyboardReport,
               !keyboardSubscribedCentrals.isEmpty else { return false }
-        return WHUpdateReport(peripheral, data, report)
+        let targets = preferredCentrals(from: keyboardCentrals)
+        guard !targets.isEmpty else { return false }
+        return WHUpdateReportToCentrals(peripheral, data, report, targets as [Any])
     }
 
     /// Type typable US-ASCII into the Mac. Logs length/skipped — never plaintext.
@@ -533,10 +685,13 @@ final class PeripheralProbe: NSObject, ObservableObject {
         isRunning = true
         advertisingConfirmed = false
         subscribedCentrals.removeAll()
+        mouseCentrals.removeAll()
+        keyboardCentrals.removeAll()
         reportSubscriberCount = 0
         activeReport = nil
         activeKeyboardReport = nil
         keyboardSubscribedCentrals.removeAll()
+        refreshHIDHosts()
         statusSummary = "Starting…"
         addedServiceCount = 0
         expectedServiceCount = 0
@@ -560,12 +715,15 @@ final class PeripheralProbe: NSObject, ObservableObject {
         pendingServiceObjects = []
         isRunning = false
         subscribedCentrals.removeAll()
+        mouseCentrals.removeAll()
+        keyboardCentrals.removeAll()
         reportSubscriberCount = 0
         activeReport = nil
         activeKeyboardReport = nil
         keyboardHIDServiceObject = nil
         keyboardReportObject = nil
         keyboardSubscribedCentrals.removeAll()
+        refreshHIDHosts()
         typeRetryTask?.cancel()
         typeRetryTask = nil
         pendingTypeText = nil
@@ -579,14 +737,19 @@ final class PeripheralProbe: NSObject, ObservableObject {
             log.warn("Mouse test requires an actual Report subscriber")
             return
         }
+        let targets = preferredCentrals(from: mouseCentrals)
+        guard !targets.isEmpty else {
+            log.warn("Mouse test requires a preferred Report subscriber")
+            return
+        }
         if !click {
-            let accepted = WHUpdateReport(peripheral, Data([0, 20, 0, 0]), report)
-            log.info("User-requested relative X=20 report queued=\(accepted)")
+            let accepted = WHUpdateReportToCentrals(peripheral, Data([0, 20, 0, 0]), report, targets as [Any])
+            log.info("User-requested relative X=20 report queued=\(accepted) targets=\(targets.count)")
         } else {
             Task { @MainActor in
-                let down = WHUpdateReport(peripheral, Data([1, 0, 0, 0]), report)
+                let down = WHUpdateReportToCentrals(peripheral, Data([1, 0, 0, 0]), report, targets as [Any])
                 try? await Task.sleep(nanoseconds: 80_000_000)
-                let up = WHUpdateReport(peripheral, Data([0, 0, 0, 0]), report)
+                let up = WHUpdateReportToCentrals(peripheral, Data([0, 0, 0, 0]), report, targets as [Any])
                 self.log.info("User-requested click reports queued down=\(down) up=\(up)")
             }
         }
@@ -1076,10 +1239,12 @@ extension PeripheralProbe: CBPeripheralManagerDelegate {
             if characteristic.uuid == CBUUID(string: HIDDescriptors.UUID16.report) {
                 if self.isKeyboardReportCharacteristic(characteristic) {
                     self.keyboardSubscribedCentrals.insert(central.identifier)
+                    self.keyboardCentrals[central.identifier] = central
                     self.activeKeyboardReport = characteristic
                     self.log.info("Keyboard Report subscribed central=\(central.identifier)")
                 } else {
                     self.subscribedCentrals.insert(central.identifier)
+                    self.mouseCentrals[central.identifier] = central
                     self.reportSubscriberCount = self.subscribedCentrals.count
                     self.activeReport = characteristic
                     self.retryPendingRelease()
@@ -1087,6 +1252,7 @@ extension PeripheralProbe: CBPeripheralManagerDelegate {
                     self.log.info("Input gate updated; no new input, except completing a pending explicit click release")
                     self.addKeyboardHIDServiceIfNeeded()
                 }
+                self.refreshHIDHosts()
                 self.refreshInputGate()
                 self.resumePendingType()
             }
@@ -1098,14 +1264,17 @@ extension PeripheralProbe: CBPeripheralManagerDelegate {
             guard characteristic.uuid == CBUUID(string: HIDDescriptors.UUID16.report) else { return }
             if self.isKeyboardReportCharacteristic(characteristic) || self.activeKeyboardReport as AnyObject? === characteristic as AnyObject {
                 self.keyboardSubscribedCentrals.remove(central.identifier)
+                self.keyboardCentrals.removeValue(forKey: central.identifier)
                 if self.keyboardSubscribedCentrals.isEmpty { self.activeKeyboardReport = nil }
                 self.log.info("Keyboard Report unsubscribed central=\(central.identifier)")
             } else {
                 self.subscribedCentrals.remove(central.identifier)
+                self.mouseCentrals.removeValue(forKey: central.identifier)
                 self.reportSubscriberCount = self.subscribedCentrals.count
                 if self.subscribedCentrals.isEmpty { self.activeReport = nil }
                 self.log.info("ATT unsubscribed \(characteristic.uuid) central=\(central.identifier)")
             }
+            self.refreshHIDHosts()
             self.refreshInputGate()
         }
     }

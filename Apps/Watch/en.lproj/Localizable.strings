@@ -36,3 +36,12 @@
 "type.cancelled" = "Cancelled";
 "type.send_busy_stopped" = "Stopped";
 "type.send_complete" = "Sent";
+"settings.output" = "Output";
+"settings.output_auto" = "Automatic (prefer Mac)";
+"settings.output_none" = "No host subscribed yet";
+"settings.output_help" = "When a Mac and iPhone are both connected, reports go to only one. Pick a device, or leave it automatic. The Watch is not given a system device name, so it distinguishes hosts by the connection and remembers your labels.";
+"settings.output_mac" = "Mac";
+"settings.output_iphone" = "iPhone";
+"settings.output_device" = "Device %d";
+"settings.mark_mac" = "Label as Mac";
+"settings.mark_iphone" = "Label as iPhone";

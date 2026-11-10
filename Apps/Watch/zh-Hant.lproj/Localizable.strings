@@ -36,3 +36,12 @@
 "type.cancelled" = "已取消";
 "type.send_busy_stopped" = "已停止";
 "type.send_complete" = "已傳送";
+"settings.output" = "輸出裝置";
+"settings.output_auto" = "自動（優先 Mac）";
+"settings.output_none" = "還沒有主機訂閱";
+"settings.output_help" = "同時連上 Mac 和 iPhone 時，只會向其中一台輸出。可以手動選擇，或保持自動。手錶看不到系統給出的裝置名稱，會依連線特徵區分，也可以手動標記。";
+"settings.output_mac" = "Mac";
+"settings.output_iphone" = "iPhone";
+"settings.output_device" = "裝置 %d";
+"settings.mark_mac" = "標為 Mac";
+"settings.mark_iphone" = "標為 iPhone";

@@ -229,6 +229,35 @@ struct PadSettingsSheet: View {
                     get: { probe.keyboardFeatureEnabled },
                     set: { probe.setKeyboardFeatureEnabled($0) }
                 ))
+                Text(L10n.string("settings.output"))
+                    .font(.headline)
+                    .padding(.top, 4)
+                if probe.hidHosts.isEmpty {
+                    Text(L10n.string("settings.output_none"))
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                } else {
+                    Button(L10n.string("settings.output_auto")) {
+                        probe.selectOutputHost(nil)
+                    }
+                    .fontWeight(probe.outputIsAutomatic ? .semibold : .regular)
+                    ForEach(probe.hidHosts) { host in
+                        VStack(alignment: .leading, spacing: 4) {
+                            Button(host.isSelected && !probe.outputIsAutomatic ? "\(host.title) ✓" : host.title) {
+                                probe.selectOutputHost(host.id)
+                            }
+                            .fontWeight(host.isSelected && !probe.outputIsAutomatic ? .semibold : .regular)
+                            HStack {
+                                Button(L10n.string("settings.mark_mac")) { probe.labelHost(host.id, kind: .mac) }
+                                Button(L10n.string("settings.mark_iphone")) { probe.labelHost(host.id, kind: .iPhone) }
+                            }
+                            .font(.caption2)
+                        }
+                    }
+                }
+                Text(L10n.string("settings.output_help"))
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
                 Text(L10n.string("settings.dictation_help"))
                     .font(.caption2)
                     .foregroundStyle(.secondary)
