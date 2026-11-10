@@ -32,16 +32,19 @@ final class PeripheralProbe: NSObject, ObservableObject {
     private var clickTask: Task<Void, Never>?
     private var keyboardTimer: Timer?
     private var pendingButtonRelease = false
-    private let macCentral = UUID(uuidString: "F7A703F6-C354-8E7E-87CB-DEC064EA3CD9")!
 
+    /// Any HOGP Report CCCD subscriber can arm the pad and receive notifies.
+    /// An exact match against one development-Mac central kept this false on
+    /// any other host, so the UI stayed on “等待 Mac 系统订阅” and gestures
+    /// never sent reports after a successful new-Mac subscribe.
     private var macInputReady: Bool {
         isRunning && dynamicPeripheral.map { WHPeripheralState($0) == 5 } == true
-            && activeReport != nil && subscribedCentrals == Set([macCentral])
+            && activeReport != nil && !subscribedCentrals.isEmpty
     }
 
     private var keyboardReady: Bool {
         keyboardFeatureEnabled && macInputReady && activeKeyboardReport != nil
-            && keyboardSubscribedCentrals == Set([macCentral])
+            && !keyboardSubscribedCentrals.isEmpty
     }
 
     func prepareMacTouchpad() {
@@ -236,7 +239,7 @@ final class PeripheralProbe: NSObject, ObservableObject {
 
     private func submitMouseReport(_ data: Data) -> Bool {
         guard let peripheral = dynamicPeripheral, let report = activeReport,
-              subscribedCentrals == Set([macCentral]) else {
+              !subscribedCentrals.isEmpty else {
             log.warn("Mouse notify skipped ready=\(macInputReady) activeReport=\(activeReport != nil) subs=\(subscribedCentrals.count) bytes=\(data.count)")
             return false
         }
@@ -255,7 +258,7 @@ final class PeripheralProbe: NSObject, ObservableObject {
     private func submitKeyboardReport(_ data: Data) -> Bool {
         guard keyboardFeatureEnabled,
               let peripheral = dynamicPeripheral, let report = activeKeyboardReport,
-              keyboardSubscribedCentrals == Set([macCentral]) else { return false }
+              !keyboardSubscribedCentrals.isEmpty else { return false }
         return WHUpdateReport(peripheral, data, report)
     }
 
