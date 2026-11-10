@@ -21,8 +21,22 @@ from typing import Any
 GENERIC_DESKTOP_PAGE = 1
 POINTER_USAGE = 1
 MOUSE_USAGE = 2
-MANUFACTURER = "WatchHID"
-MODEL_NUMBER = "Ultra2-R1"
+# Defaults match the current app's advertised DIS strings in Shared/HIDMetadata.swift.
+# They are not a physical Watch model requirement. Override for a different advertised
+# identity without changing HID behavior:
+#   WATCHHID_HID_MANUFACTURER, WATCHHID_HID_MODEL
+DEFAULT_MANUFACTURER = "WatchHID"
+DEFAULT_MODEL_NUMBER = "Ultra2-R1"
+MANUFACTURER = DEFAULT_MANUFACTURER
+MODEL_NUMBER = DEFAULT_MODEL_NUMBER
+
+
+def hid_manufacturer() -> str:
+    return os.environ.get("WATCHHID_HID_MANUFACTURER", DEFAULT_MANUFACTURER)
+
+
+def hid_model_number() -> str:
+    return os.environ.get("WATCHHID_HID_MODEL", DEFAULT_MODEL_NUMBER)
 
 # Apple device UDIDs are often 8-16 hex, not RFC 4122 8-4-4-4-12.
 _RE_UUID = re.compile(
@@ -177,9 +191,9 @@ def has_usage(node: dict, page: int, usage: int) -> bool:
 
 
 def is_watchhid_pointer_node(node: dict) -> bool:
-    if str(node.get("Manufacturer") or "") != MANUFACTURER:
+    if str(node.get("Manufacturer") or "") != hid_manufacturer():
         return False
-    if str(node.get("ModelNumber") or "") != MODEL_NUMBER:
+    if str(node.get("ModelNumber") or "") != hid_model_number():
         return False
     # Require Generic Desktop mouse usage, and pointer usage when recorded.
     if not has_usage(node, GENERIC_DESKTOP_PAGE, MOUSE_USAGE):
@@ -254,21 +268,25 @@ def find_watchhid_pointer_node(data: Any) -> dict | None:
 def verify_status_message(found: bool) -> tuple[str, int]:
     """Describe node identity only. Never claim human pointer movement passed."""
     if found:
+        maker, model = hid_manufacturer(), hid_model_number()
         text = (
-            "NODE_OK: one IOHID device on this Mac has Manufacturer=WatchHID, "
-            "ModelNumber=Ultra2-R1, and Generic Desktop mouse/pointer usage "
+            f"NODE_OK: one IOHID device on this Mac has Manufacturer={maker}, "
+            f"ModelNumber={model}, and Generic Desktop mouse/pointer usage "
             "on that same node.\n"
             "This is only same-node HID identity. It is not a pass for "
             "pointer movement. On a safe blank desktop, short-drag and "
-            "light-tap the watch pad to confirm movement yourself."
+            "light-tap the watch pad to confirm movement yourself. "
+            "Those manufacturer/model strings are the app's advertised HID "
+            "identity in the current build, not a required physical Watch model."
         )
         return text, 0
+    maker, model = hid_manufacturer(), hid_model_number()
     text = (
-        "NO: this Mac has no IOHID node that combines Manufacturer=WatchHID, "
-        "ModelNumber=Ultra2-R1, and Generic Desktop mouse/pointer usage on "
+        f"NO: this Mac has no IOHID node that combines Manufacturer={maker}, "
+        f"ModelNumber={model}, and Generic Desktop mouse/pointer usage on "
         "the same device.\n"
         "A Bluetooth-connected Apple Watch, a pairing prompt, or stitching "
-        "WatchHID and Ultra2-R1 from different nodes is not enough. Keep "
+        f"{maker} and {model} from different nodes is not enough. Keep "
         "the Watch app open if you are mid-test, and do not reset Bluetooth "
         "or unpair the system Apple Watch."
     )

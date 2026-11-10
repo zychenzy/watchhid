@@ -8,6 +8,7 @@ from __future__ import annotations
 import io
 import json
 import os
+from unittest.mock import patch
 import plistlib
 import subprocess
 import sys
@@ -245,6 +246,19 @@ class VerifyNodeTests(unittest.TestCase):
     def test_mouse_primary_usage_enough_when_no_pairs(self):
         data = [hid_node("WatchHID", "Ultra2-R1", usage=2, page=1, pairs=None)]
         self.assertIsNotNone(lib.find_watchhid_pointer_node(data))
+
+    def test_env_can_override_advertised_hid_identity(self):
+        data = [hid_node("CustomMaker", "CustomModel", pairs=MOUSE_POINTER_PAIRS)]
+        self.assertIsNone(lib.find_watchhid_pointer_node(data))
+        with patch.dict(os.environ, {"WATCHHID_HID_MANUFACTURER": "CustomMaker", "WATCHHID_HID_MODEL": "CustomModel"}):
+            self.assertIsNotNone(lib.find_watchhid_pointer_node(data))
+            text, code = lib.verify_status_message(True)
+        self.assertEqual(code, 0)
+        self.assertIn("CustomMaker", text)
+        self.assertIn("CustomModel", text)
+        self.assertNotIn("Ultra2-R1", text)
+        # Defaults are restored after the override goes out of scope.
+        self.assertIsNone(lib.find_watchhid_pointer_node(data))
 
     def test_plist_fixture_roundtrip(self):
         payload = plistlib.dumps(
