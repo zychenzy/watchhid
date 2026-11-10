@@ -4,10 +4,52 @@
 # Apple Development identity (certificate + private key on this Mac).
 # Does not print UDIDs, Bluetooth addresses, certificate serials,
 # emails, or private key material. Does not create, revoke, export,
-# or delete certificates.
+# or delete Apple Development certificates.
+#
+# Usage:
+#   ./scripts/check-signing-prereqs.sh
+#   ./scripts/check-signing-prereqs.sh --install-wwdr
+#
+# --install-wwdr downloads Apple's official WWDR G3 intermediate and
+# installs it into the login keychain. macOS will usually ask for the
+# login keychain password or an Allow prompt. Confirming that dialog
+# authorizes writing the official intermediate; it does not create an
+# Apple Development certificate.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
+
+WWDR_URL="https://www.apple.com/certificateauthority/AppleWWDRCAG3.cer"
+WWDR_NAME="AppleWWDRCAG3.cer"
+
+install_wwdr_g3() {
+  tmpdir="$(mktemp -d "${TMPDIR:-/tmp}/watchhid-wwdr.XXXXXX")"
+  trap 'rm -rf "$tmpdir"' RETURN
+  dest="$tmpdir/$WWDR_NAME"
+  echo "Downloading official WWDR G3 from Apple PKI..."
+  if ! curl -fsSL "$WWDR_URL" -o "$dest"; then
+    echo "Could not download $WWDR_URL" >&2
+    return 1
+  fi
+  if ! openssl x509 -inform DER -in "$dest" -noout -subject >/dev/null 2>&1; then
+    echo "The downloaded file was not a readable DER certificate. Not installing it." >&2
+    return 1
+  fi
+  echo "Installing into the login keychain. If macOS asks for the login password or Allow, confirm it in that official dialog."
+  echo "That prompt authorizes Apple's official intermediate; it is not creating a Development certificate."
+  echo "Do not set trust to Always Trust, and do not revoke or delete any Development certificate."
+  security add-certificates -k "$HOME/Library/Keychains/login.keychain-db" "$dest"
+  echo "WWDR G3 is in the login keychain."
+}
+
+if [[ "${1:-}" == "--install-wwdr" ]]; then
+  install_wwdr_g3
+  shift
+elif [[ -n "${1:-}" ]]; then
+  echo "Usage: $0 [--install-wwdr]" >&2
+  exit 2
+fi
+
 missing=0
 
 if ! command -v xcodegen >/dev/null; then
@@ -59,8 +101,8 @@ else
     echo "An Apple Development identity is present, but it is not valid for codesigning (find-identity -v listed none)." >&2
     if printf '%s\n' "$identity_all$identity_basic" | grep -q 'CSSMERR_TP_NOT_TRUSTED'; then
       echo "The certificate is paired with a private key on this Mac; trust evaluation failed (CSSMERR_TP_NOT_TRUSTED). This is often a missing WWDR G3 intermediate, not a missing key." >&2
-      echo "Download https://www.apple.com/certificateauthority/AppleWWDRCAG3.cer and install it into the login keychain only:" >&2
-      echo "  security add-certificates -k ~/Library/Keychains/login.keychain-db AppleWWDRCAG3.cer" >&2
+      echo "Install Apple's official WWDR G3 intermediate into the login keychain with:" >&2
+      echo "  ./scripts/check-signing-prereqs.sh --install-wwdr" >&2
       echo "macOS will usually ask for the login keychain password or an Allow prompt; confirm it in the official dialog. That authorizes installing Apple's official intermediate, and is not creating a new Apple Development certificate." >&2
       echo "Do not set custom trust to Always Trust, do not revoke or delete the Apple Development certificate, and do not import a private key from another Mac." >&2
     else

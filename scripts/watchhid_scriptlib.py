@@ -389,7 +389,7 @@ def provision_info(app_path: str, env_file: str = "") -> int:
         if dt.tzinfo is None:
             dt = dt.replace(tzinfo=datetime.timezone.utc)
         shanghai = dt.astimezone(datetime.timezone(datetime.timedelta(hours=8)))
-        return shanghai.strftime("%Y-%m-%d %H:%M:%S Asia/Shanghai (北京时间)")
+        return shanghai.strftime("%Y-%m-%d %H:%M:%S Asia/Shanghai")
 
     devices = data.get("ProvisionedDevices") or []
     print("ExpirationDate:", fmt(exp))
