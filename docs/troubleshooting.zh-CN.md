@@ -8,6 +8,7 @@
 |---|---|---|
 | Watch 一直无法进入可广播的就绪状态，或 Watch 上的蓝牙权限控件不可用，并提示设置与 iPhone 共享 | 即使 WatchHID 没有配套的 iPhone 应用，部分 Watch 隐私设置仍可能在已配对的 iPhone 上管理 | 在已配对的 iPhone 上打开 **设置** 应用，进入 **设置 > 隐私与安全性 > 蓝牙**（Settings > Privacy & Security > Bluetooth）。如果列表里有 WatchHID，请打开它，然后回到 WatchHID。不要重置或取消配对系统蓝牙，也不要为此重装应用。如果列表里没有 WatchHID，请查看当前的隐私状态，而不是去重置。Apple 文档说明了 Watch/iPhone 共享的隐私管理，以及“设置 > 隐私与安全性 > 蓝牙”这条路径；在 Watch 控件不可用时，这条 iPhone 设置恢复路径已得到确认，但它不是每种环境的普遍要求。 |
 | 指针不移动，但 Watch 显示 Ready | Ready 只表示所选主机已经订阅 | 在设置里选中目标 Device，点 Test 或拖动，并观察那台机器。如果 macOS 出现配对提示，请确认。然后运行 `./scripts/verify-hogp-mouse.sh`，再加上你亲眼看到的移动。 |
+| 所选主机是 iPhone，但那台 iPhone 上没有指针 | 把 iPhone 当作鼠标/指针主机使用时，需要在那台 iPhone 上打开辅助触控 | 在目标 iPhone（要显示指针的那一台）上打开 **设置 > 辅助功能 > 触控 > 辅助触控**。这是系统设置，不是 WatchHID 配套应用，也与在已配对 iPhone 上于 **设置 > 隐私与安全性 > 蓝牙** 中打开 WatchHID 不是同一件事。`verify-hogp-mouse.sh` 检查适用于 Mac 主机。 |
 | `verify-hogp-mouse.sh` 报告 `NODE_OK`，但仍然看不到移动 | 身份匹配并不是移动测试 | 拖动时盯着桌面。当前选中的输出可能是另一台主机。 |
 | 打开键盘后，指针只能上下移动 | 在已经绑定基线 4 字节鼠标映射的主机上，使用了复合的鼠标+键盘 Report Map | 关闭英语键盘 HID，恢复基线鼠标映射。不要在该绑定上使用复合 Report Map。当前应用把键盘放在单独的服务上。 |
 | 出现 Keyboard Setup Assistant | macOS 看到了一个新的键盘 HID | 关闭该助理。不要完成识别，也不要用另一把键盘来识别 WatchHID。没有官方方法能保证它一定不出现。 |

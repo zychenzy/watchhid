@@ -67,6 +67,7 @@ See [docs/usage.md](docs/usage.md) for gestures, output selection, and dictation
 - Input only while the app is in the foreground with the screen on
 - English keyboard HID is off by default; if Keyboard Setup Assistant appears, close it
 - If the system sheet opens a keyboard first, switch to the microphone, then tap Done
+- To use an iPhone as the pointer host, enable **Settings > Accessibility > Touch > AssistiveTouch** on that iPhone. This is a system setting on the target iPhone, not a WatchHID companion app, and it is separate from Watch Bluetooth privacy on the paired iPhone.
 
 ## Limitations
 

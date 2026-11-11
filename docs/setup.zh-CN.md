@@ -84,6 +84,10 @@ cp Config/local_devices.env.example Config/local_devices.env
 
 在 Watch 的蓝牙控件不可用、并显示上述共享设置提示时，这条 iPhone 设置路径已确认能恢复 WatchHID。这是一次已确认的情况，不是每一种 watchOS 设置的必须步骤。如果 iPhone 的蓝牙隐私列表里没有 WatchHID，请查看当前 Watch 和 iPhone 的隐私状态，而不要随意重置蓝牙或重装。
 
+若要把 iPhone 当作鼠标/指针主机使用，请在那台目标 iPhone（要显示指针的那一台）上打开 **设置 > 辅助功能 > 触控 > 辅助触控**。这是系统设置，不是 WatchHID 配套应用；WatchHID 仍然是仅手表应用。配对的 iPhone 仍是 watchOS 的要求，但那与这一步不是同一件事。
+
+这与上面在已配对 iPhone 上进行的 **设置 > 隐私与安全性 > 蓝牙** 步骤不是同一件事。那些步骤只涉及在配对 iPhone 上管理 Watch 隐私控件时，WatchHID 的蓝牙权限。接收指针的 iPhone 可以是那台已配对的手机，也可以是另一台 iPhone。
+
 如果 macOS 显示蓝牙配对提示，请在系统对话框中确认。在触控板上短拖一下，然后运行：
 
 ```bash

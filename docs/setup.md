@@ -84,6 +84,10 @@ If the Watch does not become ready to advertise—for example it stays waiting f
 
 This iPhone Settings path has been confirmed to restore WatchHID when the Watch Bluetooth controls were unavailable and showed that shared-settings notice. That is a confirmed case, not a requirement for every watchOS setup. If WatchHID is not in the iPhone Bluetooth privacy list, inspect the current Watch and iPhone privacy state rather than resetting Bluetooth or reinstalling at random.
 
+To use an iPhone as the mouse/pointer host, enable **Settings > Accessibility > Touch > AssistiveTouch** on that target iPhone — the iPhone that should show the pointer. This is a system setting, not a WatchHID companion app; WatchHID remains watch-only. A paired iPhone is still a watchOS requirement, but that is separate from this step.
+
+This is not the same as the paired-iPhone **Settings > Privacy & Security > Bluetooth** steps above. Those steps only cover WatchHID’s Bluetooth permission when Watch privacy controls are managed on the paired iPhone. The iPhone receiving the pointer may be that same phone or another iPhone.
+
 If macOS shows a Bluetooth pairing prompt, confirm it in the system dialog. Short-drag on the pad, then:
 
 ```bash

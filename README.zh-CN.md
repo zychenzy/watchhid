@@ -67,6 +67,7 @@ cp Config/local_devices.env.example Config/local_devices.env     # once; fill th
 - 仅在应用位于前台且屏幕亮起时发送输入
 - 英语键盘 HID 默认关闭；如果出现 Keyboard Setup Assistant，请将其关闭
 - 如果系统页面先打开键盘，请切换到麦克风，然后点 Done
+- 若要把 iPhone 当作指针主机使用，请在那台 iPhone 上打开 **设置 > 辅助功能 > 触控 > 辅助触控**。这是目标 iPhone 上的系统设置，不是 WatchHID 配套应用，也与配对 iPhone 上的 Watch 蓝牙隐私设置不是同一件事。
 
 ## 限制
 
