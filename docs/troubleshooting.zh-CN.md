@@ -17,7 +17,7 @@
 | 安装失败，出现 “Failed to allocate RSD device”，或 CoreDevice / RemotePairing 通道超时 | 列表里的 `connected` 条目并不是足够的安装门禁 | 让 Watch 保持靠近、唤醒、解锁且屏幕亮起。只运行 `./scripts/install-signed-watch-app.sh`（它自己会做就绪探测）。可选的单独诊断：在你**并不**即将安装时，运行 `./scripts/install-signed-watch-app.sh --check-ready`。不要把 `--check-ready` 和安装紧挨着连续跑。不要在很短的间隔里反复重试。不要吊销证书。 |
 | 安装找不到这块 Watch | 脚本只匹配 `Config/local_devices.env` 里的 `WATCH_UDID` | 确认你已经为这块 Watch 填好了那个被 gitignore 的 env 文件。不要从列表里猜测另一台设备。 |
 | 一台新的 Mac 始终得不到鼠标节点 | 加密的 HOGP 绑定不能转移 | 在这台 Mac 上建立新的绑定。不要从另一台 Mac 复制蓝牙偏好设置或钥匙串项目。 |
-| Watch 休眠或回到表盘后，输入停止 | 应用必须位于前台且屏幕亮起 | 重新打开 WatchHID，并开始一个新的手势。不支持后台输入。 |
+| Watch 休眠或回到表盘后，输入停止 | 应用必须位于前台且屏幕亮起 | 重新打开 WatchHID，并开始一个新的手势。不支持后台输入。离开应用会停止广播，因此重新打开后请稍等主机重新连接，直到触控板显示就绪。 |
 | 卸载 iPhone 上的 WatchHID 应用后，Watch 应用消失了 | 较旧的 iOS 产品仍可能把同一个 Watch 包作为配套应用嵌入。删除那个 iPhone 应用时，可能会把 Watch 应用一起带走。当前的仅手表包不需要配套的 iPhone 应用。 | 直接安装当前的仅手表 Watch 应用。它被标记为仅手表，没有配套应用的 bundle identifier，并且已确认可以在未安装 iPhone WatchHID 应用的情况下运行。不要把残留的、内嵌 Watch 应用的旧 iOS 产品当成当前的打包方式。 |
 
 ## 命令

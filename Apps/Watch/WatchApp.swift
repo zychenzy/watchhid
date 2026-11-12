@@ -133,7 +133,7 @@ struct ContentView: View {
             probe.crownRotated(delta: delta)
         }
         .onAppear {
-            probe.setInputSceneActive(scenePhase == .active)
+            probe.scenePhaseChanged(Self.lifecyclePhase(scenePhase))
             padFocused = !inputOverlayVisible
         }
         .onChange(of: inputOverlayVisible) { _, blocked in
@@ -141,19 +141,18 @@ struct ContentView: View {
             padFocused = !blocked
         }
         .onChange(of: scenePhase) { _, phase in
-            probe.setInputSceneActive(phase == .active)
+            probe.scenePhaseChanged(Self.lifecyclePhase(phase))
             if phase == .active && !inputOverlayVisible {
                 padFocused = true
             }
         }
         .onDisappear { probe.setInputSceneActive(false) }
         .task {
-            probe.setInputSceneActive(scenePhase == .active)
+            probe.scenePhaseChanged(Self.lifecyclePhase(scenePhase))
             if ProcessInfo.processInfo.arguments.contains("--r2-probe") {
                 _ = RuntimeEnumerator.runProbe { logStore.info($0) }
             }
-            probe.prepareMacTouchpad()
-            logStore.info("Large pad + dictation UI ready; auto-arm when Mac subscribed")
+            logStore.info("Large pad + dictation UI ready; HID peripheral follows the foreground scene")
             #if targetEnvironment(simulator)
             await runSimulatorCheck()
             #endif
@@ -180,6 +179,14 @@ struct ContentView: View {
         }
     }
     #endif
+
+    private static func lifecyclePhase(_ phase: ScenePhase) -> PeripheralLifecycle.Phase {
+        switch phase {
+        case .active: return .active
+        case .inactive: return .inactive
+        default: return .background
+        }
+    }
 
     private var dictationButtonTitle: String {
         if probe.keyboardBusy { return L10n.string("dictation.cancel") }
@@ -224,6 +231,7 @@ struct ContentView: View {
         logStore.info("Voice text entry requested; system selects initial input method")
         dictationPresented = true
         probe.setInputUIBlocked(true)
+        probe.systemTextEntryBegan()
         // Captured text is typed into the Mac when possible. The Watch does not show it.
         controller.presentTextInputController(withSuggestions: nil, allowedInputMode: .plain) { results in
             Task { @MainActor in
@@ -235,9 +243,11 @@ struct ContentView: View {
                 probe.setInputSceneActive(true)
                 guard let text = Self.dictationString(from: results) else {
                     LogStore.shared.info("Dictation canceled or empty")
+                    probe.systemTextEntryEnded()
                     return
                 }
                 PeripheralProbe.shared.acceptDictation(text)
+                probe.systemTextEntryEnded()
             }
         }
     }
@@ -401,12 +411,8 @@ final class PhoneBridge: NSObject, ObservableObject, WCSessionDelegate {
 final class WatchBackgroundDelegate: NSObject, WKApplicationDelegate {
     func applicationDidFinishLaunching() {
         LogStore.shared.info("Application delegate launched state=\(WKApplication.shared().applicationState.rawValue)")
-        // Do not wait for ContentView.task — install/relaunch often leaves the process
-        // backgrounded without a scene, which previously skipped HID advertising entirely.
-        Task { @MainActor in
-            PeripheralProbe.shared.prepareMacTouchpad()
-            LogStore.shared.info("Launch-path prepareMacTouchpad requested")
-        }
+        // Do not start the HID peripheral here. A background launch must not
+        // advertise; ContentView starts it when the scene becomes active.
     }
 
     func handle(_ backgroundTasks: Set<WKRefreshBackgroundTask>) {

@@ -17,6 +17,8 @@ swiftc Shared/HIDDescriptors.swift Shared/HIDMetadata.swift Shared/KeyboardInput
   scripts/MouseInputStateTests.swift -o /tmp/watchhid-mouse-tests && /tmp/watchhid-mouse-tests
 swiftc Shared/OutputHostRouting.swift scripts/OutputHostRoutingTests.swift \
   -o /tmp/watchhid-output-host-tests && /tmp/watchhid-output-host-tests
+swiftc Shared/PeripheralLifecycle.swift scripts/PeripheralLifecycleTests.swift \
+  -o /tmp/watchhid-lifecycle-tests && /tmp/watchhid-lifecycle-tests
 python3 scripts/test_watchhid_scriptlib.py
 ```
 

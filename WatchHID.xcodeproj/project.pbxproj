@@ -19,6 +19,7 @@
 		ACB011887E8053A42457B5C6 /* WatchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 13B069EDE22D71C7F8BFD107 /* WatchApp.swift */; };
 		B310CE42CF005BB93C690C8D /* RuntimeEnumerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 355CD0CB069653CDE1059908 /* RuntimeEnumerator.swift */; };
 		BC0E392174518CBEF23FEBF6 /* MouseInputState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04D84C02614867018A14428D /* MouseInputState.swift */; };
+		E1B7755FA87B08CC0D6D94FE /* PeripheralLifecycle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E97B9AAA5A98ACA2097D481 /* PeripheralLifecycle.swift */; };
 		E8BDAEE5F762C438837BA3A9 /* HIDDescriptors.swift in Sources */ = {isa = PBXBuildFile; fileRef = F57B97A047F9857D9E240285 /* HIDDescriptors.swift */; };
 		EFD93EDDE452DD05AB357901 /* LogEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDBD31517FD5FE527FAB7FB6 /* LogEntry.swift */; };
 		F7FAE9C69183DBD46C54AB04 /* PeripheralManagerFactory.m in Sources */ = {isa = PBXBuildFile; fileRef = 4C1DCF1556640520CD7CD175 /* PeripheralManagerFactory.m */; };
@@ -40,6 +41,7 @@
 		13B069EDE22D71C7F8BFD107 /* WatchApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchApp.swift; sourceTree = "<group>"; };
 		17522589C493364D0A62D1AF /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
 		178D3FFCBF79E07DB3496528 /* WatchHIDWatch-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "WatchHIDWatch-Bridging-Header.h"; sourceTree = "<group>"; };
+		1E97B9AAA5A98ACA2097D481 /* PeripheralLifecycle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PeripheralLifecycle.swift; sourceTree = "<group>"; };
 		28B0C8B51971B141F86A6CDE /* zh-Hant */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hant"; path = "zh-Hant.lproj/Localizable.strings"; sourceTree = "<group>"; };
 		2C6C61FC4163BFA17B9A8418 /* PeripheralProbe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PeripheralProbe.swift; sourceTree = "<group>"; };
 		355CD0CB069653CDE1059908 /* RuntimeEnumerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RuntimeEnumerator.swift; sourceTree = "<group>"; };
@@ -134,6 +136,7 @@
 				DDBD31517FD5FE527FAB7FB6 /* LogEntry.swift */,
 				04D84C02614867018A14428D /* MouseInputState.swift */,
 				F7BFFBF3EFF770714894D75D /* OutputHostRouting.swift */,
+				1E97B9AAA5A98ACA2097D481 /* PeripheralLifecycle.swift */,
 			);
 			path = Shared;
 			sourceTree = "<group>";
@@ -260,6 +263,7 @@
 				1793EFF2CF55D6BF98D1B922 /* LogStore.swift in Sources */,
 				BC0E392174518CBEF23FEBF6 /* MouseInputState.swift in Sources */,
 				333C796AA07FD6CFEB629E96 /* OutputHostRouting.swift in Sources */,
+				E1B7755FA87B08CC0D6D94FE /* PeripheralLifecycle.swift in Sources */,
 				F7FAE9C69183DBD46C54AB04 /* PeripheralManagerFactory.m in Sources */,
 				9DD3AC587E4E530C32127FC3 /* PeripheralProbe.swift in Sources */,
 				B310CE42CF005BB93C690C8D /* RuntimeEnumerator.swift in Sources */,

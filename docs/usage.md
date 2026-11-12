@@ -13,6 +13,12 @@ WatchHID is a watch-only app. Pointer, clicks, Crown scrolling, and system dicta
 
 Input is sent only while WatchHID is in the foreground with the screen on. After the Watch sleeps or returns to the clock face, open the app again. Settings and the system text-input sheet pause the pad, release held buttons, and drop queued motion and wheel. When you return to the pad, start a new gesture.
 
+## Leaving the app
+
+WatchHID advertises as a Bluetooth mouse only while the app is open in the foreground. When you leave it (press the Crown, return to the clock face, or the Watch sleeps), the app releases any held button or key, stops advertising, and removes its HID services. A brief interruption of about three seconds does not stop it. While the system dictation sheet is open, and while the dictated text is being sent, the app keeps the connection for a limited time.
+
+When you open WatchHID again, it advertises again and the host reconnects. That can take a short moment before the pad shows Ready. Leaving the app does not remove the pairing, and macOS may keep its side of the Bluetooth link for a while; the physical link is not guaranteed to drop at once. No battery measurement backs this behavior.
+
 ## Output device
 
 Reports go to **one** subscribed host at a time. In Settings, subscribed hosts are listed as Device 1, Device 2, and so on. Those numbers stay with the same connection. They are not a Mac or iPhone label; the Watch cannot reliably tell the operating system.

@@ -40,6 +40,12 @@ final class PeripheralProbe: NSObject, ObservableObject {
     private var pendingTypeText: String?
     private var typeRetryTask: Task<Void, Never>?
     private var advertiseRetryTask: Task<Void, Never>?
+    /// Decides when the HID peripheral exists; see Shared/PeripheralLifecycle.swift.
+    private var lifecycle = PeripheralLifecycle()
+    private var lifecycleRecheckTask: Task<Void, Never>?
+    /// Bumped by every start() and stop(). Async work from an older session
+    /// must not advertise or add services for the current one.
+    private var sessionGeneration: UInt64 = 0
     @Published private(set) var keyboardBusy = false
     private var lastMouseNotifyLog = -Double.infinity
     private var mouse = MouseInputState()
@@ -92,8 +98,9 @@ final class PeripheralProbe: NSObject, ObservableObject {
     func setInputSceneActive(_ active: Bool) {
         // The system dictation sheet often reports inactive just as Done
         // returns. Cancelling here dropped the keyboard send.
-        if !active && hasPendingKeyboardSend {
-            log.info("Ignoring scene inactive during pending keyboard send")
+        if !active && hasPendingKeyboardSend
+            && lifecycle.holdsForTextEntry(at: ProcessInfo.processInfo.systemUptime) {
+            log.info("Ignoring scene inactive during a bounded dictation send")
             return
         }
         sceneActive = active
@@ -105,6 +112,61 @@ final class PeripheralProbe: NSObject, ObservableObject {
         if active {
             resumePendingType()
             scheduleAdvertiseRetryIfNeeded()
+        }
+    }
+
+    /// The scene phase decides whether the HID peripheral exists at all:
+    /// it advertises only while the app is in the foreground, and is torn
+    /// down when the user leaves (see PeripheralLifecycle for the grace and
+    /// dictation rules).
+    func scenePhaseChanged(_ phase: PeripheralLifecycle.Phase) {
+        log.info("Lifecycle scene phase=\(String(describing: phase))")
+        applyLifecycle(lifecycle.update(phase: phase, at: ProcessInfo.processInfo.systemUptime))
+        setInputSceneActive(phase == .active)
+    }
+
+    /// The system text-input (dictation) sheet is about to appear. It makes
+    /// the scene inactive; keep the peripheral for a bounded time.
+    func systemTextEntryBegan() {
+        applyLifecycle(lifecycle.textEntryBegan(at: ProcessInfo.processInfo.systemUptime))
+    }
+
+    /// The sheet returned. Call after acceptDictation so a pending send is seen.
+    func systemTextEntryEnded() {
+        applyLifecycle(lifecycle.textEntryEnded(pendingSend: hasPendingKeyboardSend,
+                                                at: ProcessInfo.processInfo.systemUptime))
+    }
+
+    private func noteTextSendSettledIfIdle() {
+        guard !hasPendingKeyboardSend else { return }
+        applyLifecycle(lifecycle.textSendSettled(at: ProcessInfo.processInfo.systemUptime))
+    }
+
+    private func applyLifecycle(_ decision: PeripheralLifecycle.Decision) {
+        switch decision {
+        case .none:
+            break
+        case .start:
+            lifecycleRecheckTask?.cancel(); lifecycleRecheckTask = nil
+            log.step("Scene active; starting HID peripheral")
+            prepareMacTouchpad()
+        case .stop:
+            lifecycleRecheckTask?.cancel(); lifecycleRecheckTask = nil
+            log.step("App not in use; stopping advertising and removing HID services")
+            stop()
+        case .recheck(let deadline):
+            scheduleLifecycleRecheck(at: deadline)
+        }
+    }
+
+    private func scheduleLifecycleRecheck(at deadline: TimeInterval) {
+        lifecycleRecheckTask?.cancel()
+        let delay = max(0, deadline - ProcessInfo.processInfo.systemUptime)
+        lifecycleRecheckTask = Task { @MainActor [weak self] in
+            do { try await Task.sleep(for: .seconds(delay)) } catch { return }
+            guard let self else { return }
+            self.lifecycleRecheckTask = nil
+            self.applyLifecycle(self.lifecycle.evaluate(at: ProcessInfo.processInfo.systemUptime))
         }
     }
 
@@ -517,6 +579,7 @@ final class PeripheralProbe: NSObject, ObservableObject {
                 if Task.isCancelled { return }
                 if self.trySendPendingType() {
                     self.typeRetryTask = nil
+                    self.noteTextSendSettledIfIdle()
                     return
                 }
                 if remaining == 40 || remaining % 8 == 0 {
@@ -530,6 +593,7 @@ final class PeripheralProbe: NSObject, ObservableObject {
                 self.pendingTypeText = nil
             }
             self.typeRetryTask = nil
+            self.noteTextSendSettledIfIdle()
         }
     }
 
@@ -569,6 +633,7 @@ final class PeripheralProbe: NSObject, ObservableObject {
         stopKeyboardTimer()
         lastTypeStatus = L10n.string("type.cancelled")
         refreshInputGate()
+        noteTextSendSettledIfIdle()
     }
 
     private func startKeyboardTimer() {
@@ -590,6 +655,7 @@ final class PeripheralProbe: NSObject, ObservableObject {
             if let release = keyboard.cancel() { _ = submitKeyboardReport(release) }
             stopKeyboardTimer()
             refreshInputGate()
+            noteTextSendSettledIfIdle()
             return
         }
         let now = ProcessInfo.processInfo.systemUptime
@@ -599,6 +665,7 @@ final class PeripheralProbe: NSObject, ObservableObject {
                 stopKeyboardTimer()
                 lastTypeStatus = L10n.string("type.send_busy_stopped")
                 refreshInputGate()
+                noteTextSendSettledIfIdle()
                 return
             }
         }
@@ -606,6 +673,7 @@ final class PeripheralProbe: NSObject, ObservableObject {
             stopKeyboardTimer()
             lastTypeStatus = L10n.string("type.send_complete", keyboard.skippedUnsupported)
             refreshInputGate()
+            noteTextSendSettledIfIdle()
         } else {
             keyboardBusy = true
         }
@@ -695,6 +763,7 @@ final class PeripheralProbe: NSObject, ObservableObject {
     func start() {
         guard !isRunning else { return }
         isRunning = true
+        sessionGeneration &+= 1
         advertisingConfirmed = false
         subscribedCentrals.removeAll()
         mouseCentrals.removeAll()
@@ -719,12 +788,19 @@ final class PeripheralProbe: NSObject, ObservableObject {
         inputTimer?.invalidate(); inputTimer = nil
         clickTask?.cancel(); clickTask = nil
         stopKeyboardTimer()
+        cancelAdvertiseRetry()
+        sessionGeneration &+= 1
         if let dyn = dynamicPeripheral {
             WHStopAdvertising(dyn)
             WHRemoveAllServices(dyn)
+            // Late callbacks from this manager must not reach the next session.
+            let setDelegate = NSSelectorFromString("setDelegate:")
+            if dyn.responds(to: setDelegate) { _ = dyn.perform(setDelegate, with: nil) }
         }
         dynamicPeripheral = nil
         pendingServiceObjects = []
+        addedServiceCount = 0
+        expectedServiceCount = 0
         isRunning = false
         subscribedCentrals.removeAll()
         mouseCentrals.removeAll()
@@ -936,8 +1012,10 @@ final class PeripheralProbe: NSObject, ObservableObject {
             }
         }
 
+        let generation = sessionGeneration
         Task { @MainActor in
             try? await Task.sleep(nanoseconds: 1_000_000_000)
+            guard self.sessionGeneration == generation, self.isRunning else { return }
             if self.addedServiceCount == 0 {
                 self.log.warn("No didAddService callbacks after 1s — advertising anyway")
                 self.startAdvertising()
@@ -1114,12 +1192,14 @@ final class PeripheralProbe: NSObject, ObservableObject {
     private func scheduleAdvertiseRetryIfNeeded() {
         guard isRunning, subscribedCentrals.isEmpty, sceneActive else { return }
         guard advertiseRetryTask == nil else { return }
+        let generation = sessionGeneration
         advertiseRetryTask = Task { @MainActor [weak self] in
             guard let self else { return }
             for attempt in 1...6 {
                 try? await Task.sleep(for: .seconds(3))
                 if Task.isCancelled { return }
-                guard self.isRunning, self.subscribedCentrals.isEmpty else {
+                guard self.sessionGeneration == generation, self.isRunning, self.sceneActive,
+                      self.subscribedCentrals.isEmpty else {
                     self.advertiseRetryTask = nil
                     return
                 }
@@ -1138,8 +1218,13 @@ final class PeripheralProbe: NSObject, ObservableObject {
         advertiseRetryTask = nil
     }
 
+    /// Callbacks from a stopped or replaced manager are ignored.
+    private func isCurrentManager(_ peripheral: AnyObject) -> Bool {
+        isRunning && dynamicPeripheral.map { $0 === peripheral } == true
+    }
+
     private func startAdvertising() {
-        guard let dyn = dynamicPeripheral else { return }
+        guard isRunning, let dyn = dynamicPeripheral else { return }
         var advertisement: [String: Any] = [WHAdvertisementLocalNameKey: HIDDescriptors.localName]
         // darwin-bt-remote advertises LocalName + short 1812 only; Appearance is HOGP "should", not required.
         if !hogpV1 && (experiment == "standard" || experiment.hasPrefix("standard128") || experiment == "custom-appearance") {
@@ -1252,6 +1337,7 @@ extension PeripheralProbe: CBPeripheralManagerDelegate {
 
     nonisolated func peripheralManager(_ peripheral: CBPeripheralManager, central: CBCentral, didSubscribeTo characteristic: CBCharacteristic) {
         Task { @MainActor in
+            guard self.isCurrentManager(peripheral) else { return }
             self.log.info("ATT subscribed \(characteristic.uuid) central=\(central.identifier)")
             if characteristic.uuid == CBUUID(string: HIDDescriptors.UUID16.report) {
                 if self.isKeyboardReportCharacteristic(characteristic) {
@@ -1278,6 +1364,7 @@ extension PeripheralProbe: CBPeripheralManagerDelegate {
 
     nonisolated func peripheralManager(_ peripheral: CBPeripheralManager, central: CBCentral, didUnsubscribeFrom characteristic: CBCharacteristic) {
         Task { @MainActor in
+            guard self.isCurrentManager(peripheral) else { return }
             guard characteristic.uuid == CBUUID(string: HIDDescriptors.UUID16.report) else { return }
             if self.isKeyboardReportCharacteristic(characteristic) || self.activeKeyboardReport as AnyObject? === characteristic as AnyObject {
                 self.keyboardSubscribedCentrals.remove(central.identifier)
@@ -1298,7 +1385,10 @@ extension PeripheralProbe: CBPeripheralManagerDelegate {
 
     nonisolated func peripheralManagerDidUpdateState(_ peripheral: CBPeripheralManager) {
         Task { @MainActor in
-            self.dynamicPeripheral = peripheral
+            guard self.isCurrentManager(peripheral) else {
+                self.log.info("Ignoring state update from a stopped peripheral session")
+                return
+            }
             self.log.info("Delegate didUpdateState → \(self.stateName(peripheral.state.rawValue))")
             self.refreshInputGate()
             self.pollStateAndContinue()
@@ -1307,6 +1397,7 @@ extension PeripheralProbe: CBPeripheralManagerDelegate {
 
     nonisolated func peripheralManagerIsReady(toUpdateSubscribers peripheral: CBPeripheralManager) {
         Task { @MainActor in
+            guard self.isCurrentManager(peripheral) else { return }
             self.retryPendingRelease()
             if self.keyboard.busy {
                 self.drainKeyboard()
@@ -1318,6 +1409,7 @@ extension PeripheralProbe: CBPeripheralManagerDelegate {
 
     nonisolated func peripheralManager(_ peripheral: CBPeripheralManager, didAdd service: CBService, error: Error?) {
         Task { @MainActor in
+            guard self.isCurrentManager(peripheral) else { return }
             if let error {
                 self.log.error("didAddService \(service.uuid.uuidString) FAILED: \(error.localizedDescription) domain=\((error as NSError).domain) code=\((error as NSError).code)")
                 self.statusSummary = "addService error: \(error.localizedDescription)"
@@ -1334,6 +1426,7 @@ extension PeripheralProbe: CBPeripheralManagerDelegate {
 
     nonisolated func peripheralManagerDidStartAdvertising(_ peripheral: CBPeripheralManager, error: Error?) {
         Task { @MainActor in
+            guard self.isCurrentManager(peripheral) else { return }
             if let error {
                 self.log.error("didStartAdvertising FAILED: \(error.localizedDescription)")
                 self.statusSummary = "Advertise error: \(error.localizedDescription)"
